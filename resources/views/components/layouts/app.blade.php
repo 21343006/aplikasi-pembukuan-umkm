@@ -309,9 +309,9 @@
                         </a>
                     </li>
                     <li>
-                        <a wire:navigate class="nav-link {{ request()->is('modal-awal') ? 'active' : 'collapsed' }}"
-                            href="/modal-awal">
-                            <i class="bi bi-plus-circle"></i><span>Modal Tetap</span>
+                        <a wire:navigate class="nav-link {{ request()->is('modal-tetap') ? 'active' : 'collapsed' }}"
+                            href="/fixed-costs">
+                            <i class="bi bi-bounding-box"></i><span>Modal Tetap & BEP</span>
                         </a>
                     </li>
                 </ul>
@@ -361,6 +361,13 @@
                         </a>
                     </li>
                     <li>
+                        <a wire:navigate
+                            class="nav-link {{ request()->is('laporan-tahunan') ? 'active' : 'collapsed' }}"
+                            href="/report-tahunan">
+                            <i class="bi bi-calendar-month"></i><span>Laporan Tahunan</span>
+                        </a>
+                    </li>
+                    <li>
                         <a wire:navigate class="nav-link {{ request()->is('profitloss') ? 'active' : 'collapsed' }}"
                             href="/profitloss">
                             <i class="bi bi-currency-dolar"></i><span>Laporan Rugi/Laba</span>
@@ -376,13 +383,16 @@
                 <i class="bi bi-graph-up-arrow"></i>
                 <span>Tingkat Keuntungan</span>
             </a>
+        </li>
+
         <li class="nav-item">
-            <a wire:navigate class="nav-link {{ request()->is('expenditures*') ? 'active' : 'collapsed' }}"
-                href="/expenditures">
-                <i class="bi-bounding-box"></i>
+            <a wire:navigate class="nav-link {{ request()->is('bep*') ? 'active' : 'collapsed' }}"
+                href="/bep-form">
+                <i class="bi bi-graph-up-arrow"></i>
                 <span>Titik Balik Modal</span>
             </a>
         </li>
+
         </ul>
 
     </aside><!-- End Sidebar -->
