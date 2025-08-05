@@ -1,0 +1,34 @@
+# Laravel
+/vendor
+/node_modules
+/public/storage
+/storage/*.key
+/storage/*.log
+/storage/pail
+.env
+.env.*
+.phpunit.result.cache
+.phpactor.json
+/.phpunit.cache
+
+# Laravel-specific tools
+/.idea
+/.vscode
+/.fleet
+/.nova
+/.zed
+
+# OS / Editor Junk
+.DS_Store
+Thumbs.db
+
+# Build / Hot Reload
+/public/build
+/public/hot
+
+# Vagrant / Homestead
+Homestead.yaml
+Homestead.json
+
+# NPM / Composer Auth
+auth.json
