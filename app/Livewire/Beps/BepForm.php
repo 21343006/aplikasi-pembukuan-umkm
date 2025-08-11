@@ -2,22 +2,22 @@
 
 namespace App\Livewire\Beps;
 
-use App\Models\FixedCost;
+use App\Models\Bep;
 use Livewire\Component;
 use Livewire\Attributes\Title;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
 
 class BepForm extends Component
 {
-    #[Title('Modal Tetap & BEP')]
-    
+    #[Title('Titik Balik Keuntungan/BEP')]
+
     public $nama_produk, $modal_tetap, $harga_per_barang, $modal_per_barang;
-    public $fixedCosts = [];
+    public $beploadbep = [];
     public $showModal = false;
     public $isEdit = false;
-    public $fixed_cost_id;
+    public $bep_id;
 
-    // Rules untuk validation - harus di Livewire component, bukan di Model
     protected $rules = [
         'nama_produk' => 'required|string|max:255',
         'modal_tetap' => 'required|numeric|min:0',
@@ -25,18 +25,43 @@ class BepForm extends Component
         'modal_per_barang' => 'required|numeric|min:0',
     ];
 
+    protected $messages = [
+        'nama_produk.required' => 'Nama produk wajib diisi.',
+        'nama_produk.max' => 'Nama produk maksimal 255 karakter.',
+        'modal_tetap.required' => 'Modal tetap wajib diisi.',
+        'modal_tetap.numeric' => 'Modal tetap harus berupa angka.',
+        'modal_tetap.min' => 'Modal tetap tidak boleh kurang dari 0.',
+        'harga_per_barang.required' => 'Harga per barang wajib diisi.',
+        'harga_per_barang.numeric' => 'Harga per barang harus berupa angka.',
+        'harga_per_barang.min' => 'Harga per barang tidak boleh kurang dari 0.',
+        'modal_per_barang.required' => 'Modal per barang wajib diisi.',
+        'modal_per_barang.numeric' => 'Modal per barang harus berupa angka.',
+        'modal_per_barang.min' => 'Modal per barang tidak boleh kurang dari 0.',
+    ];
+
     public function mount()
     {
-        $this->loadFixedCosts();
+        $this->loadbep();
     }
 
-    public function loadFixedCosts()
+    public function loadbep()
     {
         try {
-            $this->fixedCosts = FixedCost::orderBy('created_at', 'desc')->get();
+            if (!Auth::check()) {
+                $this->beploadbep = collect([]);
+                return;
+            }
+
+            $this->beploadbep = Bep::where('user_id', Auth::id())
+                ->orderBy('created_at', 'desc')
+                ->get();
         } catch (\Exception $e) {
-            $this->fixedCosts = collect([]);
-            session()->flash('error', 'Terjadi kesalahan saat memuat data: ' . $e->getMessage());
+            Log::error('Error in loadbep method: ' . $e->getMessage(), [
+                'user_id' => Auth::id(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            $this->beploadbep = collect([]);
+            session()->flash('error', 'Terjadi kesalahan saat memuat data. Silakan coba lagi.');
         }
     }
 
@@ -54,54 +79,83 @@ class BepForm extends Component
 
     public function save()
     {
-        $this->validate();
-
         try {
-            // Validasi agar harga per barang lebih besar dari modal per barang
+            if (!Auth::check()) {
+                session()->flash('error', 'Anda harus login terlebih dahulu.');
+                return;
+            }
+
+            $this->validate();
+
             if ($this->harga_per_barang <= $this->modal_per_barang) {
                 $this->addError('harga_per_barang', 'Harga per barang harus lebih besar dari modal per barang untuk mendapatkan keuntungan.');
                 return;
             }
 
             $data = [
+                'user_id' => Auth::id(),
                 'nama_produk' => trim($this->nama_produk),
                 'modal_tetap' => (float) $this->modal_tetap,
                 'harga_per_barang' => (float) $this->harga_per_barang,
                 'modal_per_barang' => (float) $this->modal_per_barang,
             ];
 
-            if ($this->isEdit && $this->fixed_cost_id) {
-                // Update data
-                $fixedCost = FixedCost::findOrFail($this->fixed_cost_id);
-                $fixedCost->update($data);
+            if ($this->isEdit && $this->bep_id) {
+                $bep = Bep::where('user_id', Auth::id())->findOrFail($this->bep_id);
+                $bep->update($data);
                 session()->flash('message', 'Data berhasil diperbarui!');
             } else {
-                // Create data baru
-                FixedCost::create($data);
+                Bep::create($data);
                 session()->flash('message', 'Data berhasil ditambahkan!');
             }
 
             $this->closeModal();
-            $this->loadFixedCosts();
+            $this->loadbep();
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            Log::error('BEP not found: ' . $e->getMessage(), ['bep_id' => $this->bep_id, 'user_id' => Auth::id()]);
+            session()->flash('error', 'Data tidak ditemukan atau Anda tidak memiliki akses.');
         } catch (\Exception $e) {
-            session()->flash('error', 'Terjadi kesalahan: ' . $e->getMessage());
+            Log::error('Error in save method: ' . $e->getMessage(), [
+                'data' => $data ?? null,
+                'user_id' => Auth::id(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            session()->flash('error', 'Terjadi kesalahan saat menyimpan data. Silakan coba lagi.');
         }
     }
 
     public function edit($id)
     {
         try {
-            $fixedCost = FixedCost::findOrFail($id);
+            if (!Auth::check()) {
+                session()->flash('error', 'Anda harus login terlebih dahulu.');
+                return;
+            }
 
-            $this->fixed_cost_id = $fixedCost->id;
-            $this->nama_produk = $fixedCost->nama_produk;
-            $this->modal_tetap = $fixedCost->modal_tetap;
-            $this->harga_per_barang = $fixedCost->harga_per_barang;
-            $this->modal_per_barang = $fixedCost->modal_per_barang;
+            if (!is_numeric($id) || $id <= 0) {
+                session()->flash('error', 'ID tidak valid.');
+                return;
+            }
+
+            $bep = Bep::where('user_id', Auth::id())->findOrFail($id);
+            
+            $this->bep_id = $bep->id;
+            $this->nama_produk = $bep->nama_produk;
+            $this->modal_tetap = $bep->modal_tetap;
+            $this->harga_per_barang = $bep->harga_per_barang;
+            $this->modal_per_barang = $bep->modal_per_barang;
             $this->isEdit = true;
             $this->showModal = true;
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            Log::error('BEP not found for edit: ' . $e->getMessage(), ['id' => $id, 'user_id' => Auth::id()]);
+            session()->flash('error', 'Data tidak ditemukan atau Anda tidak memiliki akses.');
         } catch (\Exception $e) {
-            session()->flash('error', 'Data tidak ditemukan atau terjadi kesalahan: ' . $e->getMessage());
+            Log::error('Error in edit method: ' . $e->getMessage(), [
+                'id' => $id,
+                'user_id' => Auth::id(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            session()->flash('error', 'Terjadi kesalahan saat memuat data untuk diedit.');
         }
     }
 
@@ -113,12 +167,31 @@ class BepForm extends Component
     public function delete($id)
     {
         try {
-            $fixedCost = FixedCost::findOrFail($id);
-            $fixedCost->delete();
-            $this->loadFixedCosts();
+            if (!Auth::check()) {
+                session()->flash('error', 'Anda harus login terlebih dahulu.');
+                return;
+            }
+
+            if (!is_numeric($id) || $id <= 0) {
+                session()->flash('error', 'ID tidak valid.');
+                return;
+            }
+
+            $bep = Bep::where('user_id', Auth::id())->findOrFail($id);
+            $bep->delete();
+            
+            $this->loadbep();
             session()->flash('message', 'Data berhasil dihapus!');
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            Log::error('BEP not found for delete: ' . $e->getMessage(), ['id' => $id, 'user_id' => Auth::id()]);
+            session()->flash('error', 'Data tidak ditemukan atau Anda tidak memiliki akses.');
         } catch (\Exception $e) {
-            session()->flash('error', 'Gagal menghapus data: ' . $e->getMessage());
+            Log::error('Error in delete method: ' . $e->getMessage(), [
+                'id' => $id,
+                'user_id' => Auth::id(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            session()->flash('error', 'Gagal menghapus data. Silakan coba lagi.');
         }
     }
 
@@ -129,15 +202,18 @@ class BepForm extends Component
             'modal_tetap',
             'harga_per_barang',
             'modal_per_barang',
-            'fixed_cost_id',
-            'isEdit'
+            'bep_id',
+            'isEdit',
         ]);
 
-        // Clear validation errors
         $this->resetValidation();
     }
 
-    // Real-time calculation untuk preview BEP
+    public function updatedNamaProduk()
+    {
+        $this->validateOnly('nama_produk');
+    }
+
     public function updatedModalTetap()
     {
         $this->validateOnly('modal_tetap');
@@ -153,35 +229,28 @@ class BepForm extends Component
         $this->validateOnly('modal_per_barang');
     }
 
-    public function updatedNamaProduk()
-    {
-        $this->validateOnly('nama_produk');
-    }
-
-    // Computed property untuk preview BEP di modal
     public function getBepPreviewProperty()
     {
         if (!$this->modal_tetap || !$this->harga_per_barang || !$this->modal_per_barang) {
             return 0;
         }
 
-        $keuntunganPerUnit = $this->harga_per_barang - $this->modal_per_barang;
+        $keuntunganPerUnit = (float)$this->harga_per_barang - (float)$this->modal_per_barang;
         
         if ($keuntunganPerUnit <= 0) {
             return 0;
         }
-        
-        return ceil($this->modal_tetap / $keuntunganPerUnit);
+
+        return ceil((float)$this->modal_tetap / $keuntunganPerUnit);
     }
 
-    // Computed property untuk preview keuntungan per unit
     public function getKeuntunganPreviewProperty()
     {
         if (!$this->harga_per_barang || !$this->modal_per_barang) {
             return 0;
         }
 
-        return $this->harga_per_barang - $this->modal_per_barang;
+        return (float)$this->harga_per_barang - (float)$this->modal_per_barang;
     }
 
     public function render()

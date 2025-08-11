@@ -1,7 +1,7 @@
 <div wire:ignore.self>
     <main id="main" class="main">
         <div class="pagetitle">
-            <h1>Laporan Bulanan</h1>
+            <h1><i class="bi bi-journal-text me-2"></i>Laporan Bulanan</h1>
         </div>
 
         <section class="section">
@@ -132,7 +132,8 @@
                                                 <td class="{{ $saldoHarian >= 0 ? 'text-success' : 'text-danger' }}">
                                                     {{ $saldoHarian >= 0 ? '+' : '' }}Rp{{ number_format($saldoHarian, 0, ',', '.') }}
                                                 </td>
-                                                <td class="{{ $saldoKumulatif >= 0 ? 'text-success' : 'text-danger' }}">
+                                                <td
+                                                    class="{{ $saldoKumulatif >= 0 ? 'text-success' : 'text-danger' }}">
                                                     Rp{{ number_format($saldoKumulatif, 0, ',', '.') }}
                                                 </td>
                                             </tr>
@@ -144,7 +145,8 @@
                                                     {{ $namaBulan[$bulan] ?? 'Unknown' }} {{ $tahun }}
                                                     <br><br>
                                                     <small class="text-info">
-                                                        Saldo kumulatif tetap: <strong>Rp{{ number_format($totalSaldoKumulatif, 0, ',', '.') }}</strong>
+                                                        Saldo kumulatif tetap:
+                                                        <strong>Rp{{ number_format($totalSaldoKumulatif, 0, ',', '.') }}</strong>
                                                     </small>
                                                 </td>
                                             </tr>
@@ -153,7 +155,8 @@
                                         @if (count($rekapHarian) > 0)
                                             <tr class="fw-bold bg-light">
                                                 <td colspan="4" class="text-end">Saldo Akhir Bulan</td>
-                                                <td class="{{ $totalSaldoKumulatif >= 0 ? 'text-success' : 'text-danger' }}">
+                                                <td
+                                                    class="{{ $totalSaldoKumulatif >= 0 ? 'text-success' : 'text-danger' }}">
                                                     Rp{{ number_format($totalSaldoKumulatif, 0, ',', '.') }}
                                                 </td>
                                             </tr>

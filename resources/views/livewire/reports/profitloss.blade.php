@@ -1,6 +1,6 @@
 <main id="main" class="main py-4">
-    <div class="pagetitle mb-3">
-        <h1 class="text-center">Laporan Laba Rugi</h1>
+    <div class="pagetitle">
+        <h1><i class="bi bi-journal-text me-2"></i>Laporan Rugi Laba</h1>
     </div>
 
     <section class="section dashboard">
@@ -29,7 +29,8 @@
                                     </tr>
                                     <tr class="table-{{ $labaRugi >= 0 ? 'success' : 'danger' }}">
                                         <th>Laba / Rugi</th>
-                                        <td class="text-end fw-bold {{ $labaRugi >= 0 ? 'text-success' : 'text-danger' }}">
+                                        <td
+                                            class="text-end fw-bold {{ $labaRugi >= 0 ? 'text-success' : 'text-danger' }}">
                                             Rp {{ number_format($labaRugi, 2, ',', '.') }}
                                         </td>
                                     </tr>
@@ -62,7 +63,7 @@
                     </div>
                 </div>
                 <a href="/dashboard" class="btn btn-secondary mt-2">
-                        Kembali
+                    Kembali
                 </a>
             </div>
         </div>
@@ -94,7 +95,7 @@
                     pointBackgroundColor: [
                         'rgba(25, 135, 84, 1)', // green untuk pendapatan
                         'rgba(220, 53, 69, 1)', // red untuk pengeluaran
-                        '{{ $labaRugi >= 0 ? "rgba(13, 110, 253, 1)" : "rgba(255, 193, 7, 1)" }}' // biru atau kuning
+                        '{{ $labaRugi >= 0 ? 'rgba(13, 110, 253, 1)' : 'rgba(255, 193, 7, 1)' }}' // biru atau kuning
                     ],
                     pointRadius: 6,
                     pointHoverRadius: 8
@@ -130,12 +131,12 @@
                     backgroundColor: [
                         'rgba(25, 135, 84, 0.7)', // hijau
                         'rgba(220, 53, 69, 0.7)', // merah
-                        '{{ $labaRugi >= 0 ? "rgba(13, 110, 253, 0.7)" : "rgba(255, 193, 7, 0.7)" }}' // biru / kuning
+                        '{{ $labaRugi >= 0 ? 'rgba(13, 110, 253, 0.7)' : 'rgba(255, 193, 7, 0.7)' }}' // biru / kuning
                     ],
                     borderColor: [
                         'rgba(25, 135, 84, 1)',
                         'rgba(220, 53, 69, 1)',
-                        '{{ $labaRugi >= 0 ? "rgba(13, 110, 253, 1)" : "rgba(255, 193, 7, 1)" }}'
+                        '{{ $labaRugi >= 0 ? 'rgba(13, 110, 253, 1)' : 'rgba(255, 193, 7, 1)' }}'
                     ],
                     borderWidth: 1
                 }]

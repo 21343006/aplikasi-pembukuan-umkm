@@ -1,7 +1,7 @@
 <div wire:ignore.self>
     <main id="main" class="main">
         <div class="pagetitle">
-            <h1>Laporan Tahunan</h1>
+            <h1><i class="bi bi-journal-text me-2"></i>Laporan Tahunan</h1>
         </div>
 
         <section class="section">
@@ -14,8 +14,8 @@
                             <div class="row g-3">
                                 <div class="col-md-6">
                                     <label class="form-label">Pilih Tahun</label>
-                                    <input type="number" wire:model="tahun" class="form-control"
-                                        min="2000" max="{{ now()->year }}">
+                                    <input type="number" wire:model="tahun" class="form-control" min="2000"
+                                        max="{{ now()->year }}">
                                 </div>
                             </div>
                         </div>
