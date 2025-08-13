@@ -62,8 +62,21 @@
                                 <li class="list-group-item d-flex justify-content-between">
                                     <span>Total Uang Keluar</span>
                                     <strong class="text-danger">
-                                        Rp{{ number_format($totalUangKeluar, 0, ',', '.') }}
+                                        Rp{{ number_format($totalUangKeluar + $totalModalTetap, 0, ',', '.') }}
                                     </strong>
+                                </li>
+                                {{-- Detail breakdown untuk uang keluar --}}
+                                <li class="list-group-item ps-4">
+                                    <small class="text-muted">
+                                        <div class="d-flex justify-content-between">
+                                            <span>• Pengeluaran Operasional:</span>
+                                            <span>Rp{{ number_format($totalUangKeluar, 0, ',', '.') }}</span>
+                                        </div>
+                                        <div class="d-flex justify-content-between">
+                                            <span>• Modal Tetap:</span>
+                                            <span>Rp{{ number_format($totalModalTetap, 0, ',', '.') }}</span>
+                                        </div>
+                                    </small>
                                 </li>
                                 <li class="list-group-item d-flex justify-content-between border-top-2">
                                     <span><strong>Total Saldo Kumulatif</strong></span>
@@ -163,6 +176,20 @@
                                         @endif
                                     </tbody>
                                 </table>
+                                {{-- Info Tambahan --}}
+                                <div class="alert alert-info mt-3">
+                                    <div class="d-flex align-items-start">
+                                        <i class="bi bi-lightbulb fs-4 me-3"></i>
+                                        <div>
+                                            <h6 class="mb-2"><strong>Informasi mengenai laporan:</strong></h6>
+                                            <ul class="mb-0">
+                                                <li>Modal awal akan dihitung sebagai total pemasukan diawal list yang akan mempengaruhi saldo kumulatif</li>
+                                                <li>Modal keluar dari pengelolaan modal akan dihitung sebagai total pengeluaran di awal list</li>
+                                                <li>Biaya tetap akan dihitung sebagai pengeluaran di awal list setiap awal bulan dan <strong>sudah termasuk dalam Total Uang Keluar</strong></li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>

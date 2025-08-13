@@ -3,7 +3,7 @@
 namespace App\Livewire\Reports;
 
 use Livewire\Component;
-use App\Models\Report;
+use App\Models\Capital;
 use App\Models\Capitalearly;
 use App\Models\Reportharian;
 use Livewire\Attributes\Title;
@@ -40,6 +40,7 @@ class ReportharianPage extends Component
     {
         $this->showModal = true;
         $this->isEdit = false;
+        // Set tanggal input berdasarkan tanggal filter yang dipilih
         $this->tanggal_input = $this->tanggal_filter;
         $this->reset(['keterangan', 'uang_masuk', 'uang_keluar']);
     }
@@ -163,8 +164,14 @@ class ReportharianPage extends Component
     {
         $tanggal = $this->tanggal_filter;
 
+        // Hitung saldo sampai hari sebelumnya
+        $saldoSebelumnya = $this->getSaldoSampaiTanggal(
+            Carbon::parse($tanggal)->subDay()->format('Y-m-d')
+        );
+
+        // 1. Data laporan harian untuk tanggal yang dipilih
         $reportData = Reportharian::where('user_id', Auth::id())
-            ->where('tanggal', '<=', $tanggal)
+            ->whereDate('tanggal', $tanggal)
             ->orderBy('tanggal')
             ->orderBy('id')
             ->get()
@@ -179,12 +186,13 @@ class ReportharianPage extends Component
                 ];
             });
 
+        // 2. Data modal awal untuk tanggal yang dipilih
         $modalAwalData = Capitalearly::where('user_id', Auth::id())
-            ->whereDate('created_at', '<=', $tanggal)
+            ->whereDate('tanggal_input', $tanggal)
             ->get()
             ->map(function ($item) {
                 return (object)[
-                    'tanggal' => $item->created_at->format('Y-m-d'),
+                    'tanggal' => Carbon::parse($item->tanggal_input)->format('Y-m-d'),
                     'keterangan' => 'Modal Awal',
                     'uang_masuk' => $item->modal_awal,
                     'uang_keluar' => 0,
@@ -192,20 +200,62 @@ class ReportharianPage extends Component
                 ];
             });
 
-        $merged = $reportData->concat($modalAwalData)
-            ->sortBy(function ($item) {
-                return $item->tanggal . ($item->raw_id ?? '');
-            })->values();
-
-        $saldo = 0;
-        foreach ($merged as $item) {
-            $saldo += $item->uang_masuk - $item->uang_keluar;
-            $item->saldo = $saldo;
+        // 3. Data modal keluar untuk tanggal yang dipilih
+        $modalKeluarData = collect();
+        if (\Schema::hasColumn('capitals', 'jenis')) {
+            $modalKeluarData = Capital::where('user_id', Auth::id())
+                ->where('jenis', 'keluar')
+                ->whereDate('tanggal', $tanggal)
+                ->get()
+                ->map(function ($item) {
+                    return (object)[
+                        'tanggal' => Carbon::parse($item->tanggal)->format('Y-m-d'),
+                        'keterangan' => $item->keterangan ?? $item->keperluan ?? 'Modal Keluar',
+                        'uang_masuk' => 0,
+                        'uang_keluar' => $item->nominal,
+                        'jenis' => 'Modal Keluar',
+                    ];
+                });
         }
 
-        $this->reports = $merged->filter(function ($item) use ($tanggal) {
-            return Carbon::parse($item->tanggal)->format('Y-m-d') === $tanggal;
-        })->values()->toArray();
+        // Gabungkan data hari ini
+        $merged = $reportData->concat($modalAwalData)->concat($modalKeluarData)
+            ->sortBy(function ($item) {
+                return $item->tanggal . ($item->raw_id ?? '0');
+            })->values();
+
+        // Hitung saldo dengan mempertimbangkan saldo sebelumnya
+        $saldoBerjalan = $saldoSebelumnya;
+        foreach ($merged as $item) {
+            $saldoBerjalan += $item->uang_masuk - $item->uang_keluar;
+            $item->saldo = $saldoBerjalan;
+        }
+
+        $this->reports = $merged->toArray();
+    }
+
+    private function getSaldoSampaiTanggal($tanggal)
+    {
+        // Hitung total dari Reportharian
+        $totalReportharian = Reportharian::where('user_id', Auth::id())
+            ->where('tanggal', '<=', $tanggal)
+            ->sum(\DB::raw('uang_masuk - uang_keluar'));
+
+        // Hitung total dari Capitalearly
+        $totalModalAwal = Capitalearly::where('user_id', Auth::id())
+            ->where('tanggal_input', '<=', $tanggal)
+            ->sum('modal_awal');
+
+        // Hitung total modal keluar
+        $totalModalKeluar = 0;
+        if (\Schema::hasColumn('capitals', 'jenis')) {
+            $totalModalKeluar = Capital::where('user_id', Auth::id())
+                ->where('jenis', 'keluar')
+                ->where('tanggal', '<=', $tanggal)
+                ->sum('nominal');
+        }
+
+        return $totalReportharian + $totalModalAwal - $totalModalKeluar;
     }
 
     public function render()

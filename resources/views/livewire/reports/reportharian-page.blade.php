@@ -17,7 +17,7 @@
                                         <i class="bi bi-calendar3 me-2"></i>Pilih Tanggal
                                     </label>
                                     <input type="date" wire:model="tanggal_filter" wire:change="tanggalChanged"
-                                           class="form-control modern-input" id="tanggal_filter">
+                                        class="form-control modern-input" id="tanggal_filter">
                                 </div>
                                 <div class="col-md-6">
                                     <div class="stats-card h-100">
@@ -72,34 +72,40 @@
                                             @foreach ($reports as $index => $item)
                                                 <tr>
                                                     <td class="text-center">{{ $index + 1 }}</td>
-                                                    <td class="text-center">{{ \Carbon\Carbon::parse($item->tanggal)->format('d/m/Y') }}</td>
+                                                    <td class="text-center">
+                                                        {{ \Carbon\Carbon::parse($item->tanggal)->format('d/m/Y') }}
+                                                    </td>
                                                     <td>{{ $item->keterangan ?? '-' }}</td>
-                                                    <td class="text-end money-{{ $item->uang_masuk > 0 ? 'positive' : 'neutral' }}">
+                                                    <td
+                                                        class="text-end money-{{ $item->uang_masuk > 0 ? 'positive' : 'neutral' }}">
                                                         Rp {{ number_format($item->uang_masuk, 0, ',', '.') }}
                                                     </td>
-                                                    <td class="text-end money-{{ $item->uang_keluar > 0 ? 'negative' : 'neutral' }}">
+                                                    <td
+                                                        class="text-end money-{{ $item->uang_keluar > 0 ? 'negative' : 'neutral' }}">
                                                         Rp {{ number_format($item->uang_keluar, 0, ',', '.') }}
                                                     </td>
-                                                    <td class="text-end money-{{ $item->saldo > 0 ? 'positive' : ($item->saldo < 0 ? 'negative' : 'neutral') }}">
+                                                    <td
+                                                        class="text-end money-{{ $item->saldo > 0 ? 'positive' : ($item->saldo < 0 ? 'negative' : 'neutral') }}">
                                                         Rp {{ number_format($item->saldo, 0, ',', '.') }}
                                                     </td>
                                                     <td class="text-center">
-                                                        <span class="badge modern-badge bg-{{ $item->jenis == 'Modal' ? 'modal' : 'laporan' }}">
+                                                        <span
+                                                            class="badge modern-badge bg-{{ $item->jenis == 'Modal' ? 'modal' : 'laporan' }}">
                                                             {{ $item->jenis ?? 'Laporan' }}
                                                         </span>
                                                     </td>
                                                     <td class="text-center">
-                                                        @if($item->jenis !== 'Modal' && isset($item->raw_id))
+                                                        @if ($item->jenis !== 'Modal' && isset($item->raw_id))
                                                             <div class="btn-group" role="group">
                                                                 <button class="btn btn-warning modern-btn btn-sm"
-                                                                        wire:click="edit({{ $item->raw_id }})"
-                                                                        title="Edit">
+                                                                    wire:click="edit({{ $item->raw_id }})"
+                                                                    title="Edit">
                                                                     <i class="bi bi-pencil"></i>
                                                                 </button>
                                                                 <button class="btn btn-danger modern-btn btn-sm"
-                                                                        wire:click="confirmDelete({{ $item->raw_id }})"
-                                                                        wire:confirm="Apakah Anda yakin ingin menghapus data ini?"
-                                                                        title="Hapus">
+                                                                    wire:click="confirmDelete({{ $item->raw_id }})"
+                                                                    wire:confirm="Apakah Anda yakin ingin menghapus data ini?"
+                                                                    title="Hapus">
                                                                     <i class="bi bi-trash"></i>
                                                                 </button>
                                                             </div>
@@ -119,13 +125,27 @@
                                     </div>
                                     <h5 class="empty-state-title">Belum ada data transaksi</h5>
                                     <p class="empty-state-text">
-                                        Belum ada data transaksi untuk tanggal {{ \Carbon\Carbon::parse($tanggal_filter)->format('d M Y') }}.
+                                        Belum ada data transaksi untuk tanggal
+                                        {{ \Carbon\Carbon::parse($tanggal_filter)->format('d M Y') }}.
                                     </p>
                                     <button class="btn btn-primary modern-btn" wire:click="openModal">
                                         <i class="bi bi-plus-circle me-2"></i>Tambah Data Pertama
                                     </button>
                                 </div>
                             @endif
+                            
+                            {{-- Info Tambahan --}}
+                            <div class="alert alert-info mt-3">
+                                <div class="d-flex align-items-start">
+                                    <i class="bi bi-lightbulb fs-4 me-3"></i>
+                                    <div>
+                                        <h6 class="mb-2"><strong>Catatan:</strong></h6>
+                                        <ul class="mb-0">
+                                            <li>Biaya tetap atau modal tetap tidak perlu ditambahkan secara manual</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -149,8 +169,9 @@
                                 <div class="row">
                                     <div class="col-md-6 mb-3">
                                         <div class="form-floating">
-                                            <input type="date" class="form-control @error('tanggal_input') is-invalid @enderror"
-                                                   wire:model="tanggal_input" id="tanggal_input">
+                                            <input type="date"
+                                                class="form-control @error('tanggal_input') is-invalid @enderror"
+                                                wire:model="tanggal_input" id="tanggal_input">
                                             <label for="tanggal_input">Tanggal *</label>
                                             @error('tanggal_input')
                                                 <div class="invalid-feedback">{{ $message }}</div>
@@ -159,8 +180,10 @@
                                     </div>
                                     <div class="col-md-6 mb-3">
                                         <div class="form-floating">
-                                            <input type="text" class="form-control @error('keterangan') is-invalid @enderror"
-                                                   wire:model="keterangan" id="keterangan" placeholder="Masukkan keterangan">
+                                            <input type="text"
+                                                class="form-control @error('keterangan') is-invalid @enderror"
+                                                wire:model="keterangan" id="keterangan"
+                                                placeholder="Masukkan keterangan">
                                             <label for="keterangan">Keterangan</label>
                                             @error('keterangan')
                                                 <div class="invalid-feedback">{{ $message }}</div>
@@ -168,12 +191,14 @@
                                         </div>
                                     </div>
                                 </div>
-                                
+
                                 <div class="row">
                                     <div class="col-md-6 mb-3">
                                         <div class="form-floating">
-                                            <input type="number" class="form-control @error('uang_masuk') is-invalid @enderror"
-                                                   wire:model="uang_masuk" id="uang_masuk" min="0" step="0.01" placeholder="0">
+                                            <input type="number"
+                                                class="form-control @error('uang_masuk') is-invalid @enderror"
+                                                wire:model="uang_masuk" id="uang_masuk" min="0"
+                                                step="0.01" placeholder="0">
                                             <label for="uang_masuk">Uang Masuk *</label>
                                             @error('uang_masuk')
                                                 <div class="invalid-feedback">{{ $message }}</div>
@@ -182,8 +207,10 @@
                                     </div>
                                     <div class="col-md-6 mb-3">
                                         <div class="form-floating">
-                                            <input type="number" class="form-control @error('uang_keluar') is-invalid @enderror"
-                                                   wire:model="uang_keluar" id="uang_keluar" min="0" step="0.01" placeholder="0">
+                                            <input type="number"
+                                                class="form-control @error('uang_keluar') is-invalid @enderror"
+                                                wire:model="uang_keluar" id="uang_keluar" min="0"
+                                                step="0.01" placeholder="0">
                                             <label for="uang_keluar">Uang Keluar *</label>
                                             @error('uang_keluar')
                                                 <div class="invalid-feedback">{{ $message }}</div>
@@ -196,9 +223,11 @@
                                     <div class="alert alert-info alert-modern">
                                         <div class="d-flex align-items-center">
                                             <i class="bi bi-info-circle me-2"></i>
-                                            <strong>Selisih: 
-                                                <span class="money-{{ (($uang_masuk ?? 0) - ($uang_keluar ?? 0)) > 0 ? 'positive' : ((($uang_masuk ?? 0) - ($uang_keluar ?? 0)) < 0 ? 'negative' : 'neutral') }}">
-                                                    Rp {{ number_format(($uang_masuk ?? 0) - ($uang_keluar ?? 0), 0, ',', '.') }}
+                                            <strong>Selisih:
+                                                <span
+                                                    class="money-{{ ($uang_masuk ?? 0) - ($uang_keluar ?? 0) > 0 ? 'positive' : (($uang_masuk ?? 0) - ($uang_keluar ?? 0) < 0 ? 'negative' : 'neutral') }}">
+                                                    Rp
+                                                    {{ number_format(($uang_masuk ?? 0) - ($uang_keluar ?? 0), 0, ',', '.') }}
                                                 </span>
                                             </strong>
                                         </div>

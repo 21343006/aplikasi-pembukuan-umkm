@@ -53,8 +53,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/laporan-harian', ReportharianPage::class)->name('laporan.harian');
     Route::get('/laporan-bulanan', ReportbulananList::class)->name('laporan.bulanan');
     Route::get('/report-tahunan', Reporttahunan::class)->name('laporan.tahunan');
-    Route::get('/profitloss', ProfitLoss::class)->name('profitloss');
-    
+    Route::get('/profit-loss', ProfitLoss::class)->name('profit.loss');
+
     // Analysis Routes
     Route::get('/bep-form', BepForm::class)->name('bep.form');
     Route::get('/irr-analysis', IrrPage::class)->name('irr.analysis');

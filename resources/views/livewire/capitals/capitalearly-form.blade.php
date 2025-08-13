@@ -53,47 +53,109 @@
                                 <i class="bi bi-plus-circle-fill" style="font-size: 1.5rem;"></i>
                             </div>
                             <div>
-                                <h5 class="mb-0">Form Input Modal Awal</h5>
-                                <small class="opacity-75">Masukkan modal awal untuk memulai pembukuan Anda</small>
+                                <h5 class="mb-0">{{ $isEditing ? 'Edit Modal Awal' : 'Form Input Modal Awal' }}</h5>
+                                <small class="opacity-75">{{ $isEditing ? 'Perbarui data modal awal Anda' : 'Masukkan modal awal untuk memulai pembukuan Anda' }}</small>
                             </div>
                         </div>
                     </div>
                     <div class="card-body p-4">
-                        <form wire:submit.prevent="save">
-                            <div class="mb-4">
-                                <label for="modal_awal" class="form-label fw-semibold">
-                                    <i class="bi bi-cash-coin me-2 text-primary"></i>Modal Awal
-                                </label>
-                                <div class="input-group input-group-lg">
-                                    <span class="input-group-text bg-light border-end-0" style="border-radius: 10px 0 0 10px;">
-                                        <strong>Rp</strong>
-                                    </span>
-                                    <input 
-                                        type="number" 
-                                        step="0.01" 
-                                        wire:model.live="modal_awal" 
-                                        class="form-control border-start-0 @error('modal_awal') is-invalid @enderror"
-                                        id="modal_awal" 
-                                        placeholder="Masukkan nominal modal awal..."
-                                        style="border-radius: 0 10px 10px 0; border-left: none !important;"
-                                    >
-                                </div>
-                                @error('modal_awal')
-                                    <div class="invalid-feedback d-flex align-items-center mt-2">
-                                        <i class="bi bi-exclamation-triangle me-1"></i>{{ $message }}
+                        @if($isEditing)
+                            <div class="alert alert-info alert-dismissible fade show shadow-sm border-0 mb-4" role="alert">
+                                <div class="d-flex align-items-center">
+                                    <div class="alert-icon me-3">
+                                        <i class="bi bi-info-circle-fill" style="font-size: 1.5rem;"></i>
                                     </div>
-                                @enderror
-                                <div class="form-text mt-2">
-                                    <i class="bi bi-info-circle me-1"></i>
-                                    Modal awal akan digunakan sebagai dasar perhitungan keuangan Anda
+                                    <div>
+                                        <strong>Mode Edit!</strong> Anda sedang mengedit data modal awal
+                                    </div>
+                                </div>
+                                <button type="button" wire:click="cancelEdit" class="btn-close" aria-label="Close"></button>
+                            </div>
+                        @endif
+                        
+                        <form wire:submit.prevent="save">
+                            <div class="row">
+                                <!-- Modal Awal Input -->
+                                <div class="col-md-6 mb-4">
+                                    <label for="modal_awal" class="form-label fw-semibold">
+                                        <i class="bi bi-cash-coin me-2 text-primary"></i>Modal Awal
+                                    </label>
+                                    <div class="input-group input-group-lg">
+                                        <span class="input-group-text bg-light border-end-0" style="border-radius: 10px 0 0 10px;">
+                                            <strong>Rp</strong>
+                                        </span>
+                                        <input 
+                                            type="number" 
+                                            step="0.01" 
+                                            wire:model.live="modal_awal" 
+                                            class="form-control border-start-0 @error('modal_awal') is-invalid @enderror"
+                                            id="modal_awal" 
+                                            placeholder="Masukkan nominal modal awal..."
+                                            style="border-radius: 0 10px 10px 0; border-left: none !important;"
+                                        >
+                                    </div>
+                                    @error('modal_awal')
+                                        <div class="invalid-feedback d-flex align-items-center mt-2">
+                                            <i class="bi bi-exclamation-triangle me-1"></i>{{ $message }}
+                                        </div>
+                                    @enderror
+                                    <div class="form-text mt-2">
+                                        <i class="bi bi-info-circle me-1"></i>
+                                        Modal awal akan digunakan sebagai dasar perhitungan keuangan Anda
+                                    </div>
+                                </div>
+
+                                <!-- Tanggal Input -->
+                                <div class="col-md-6 mb-4">
+                                    <label for="tanggal_input" class="form-label fw-semibold">
+                                        <i class="bi bi-calendar-event me-2 text-primary"></i>Tanggal Input
+                                    </label>
+                                    <div class="input-group input-group-lg">
+                                        <span class="input-group-text bg-light border-end-0" style="border-radius: 10px 0 0 10px;">
+                                            <i class="bi bi-calendar3"></i>
+                                        </span>
+                                        <input 
+                                            type="date" 
+                                            wire:model.live="tanggal_input" 
+                                            class="form-control border-start-0 @error('tanggal_input') is-invalid @enderror"
+                                            id="tanggal_input"
+                                            style="border-radius: 0 10px 10px 0; border-left: none !important;"
+                                        >
+                                    </div>
+                                    @error('tanggal_input')
+                                        <div class="invalid-feedback d-flex align-items-center mt-2">
+                                            <i class="bi bi-exclamation-triangle me-1"></i>{{ $message }}
+                                        </div>
+                                    @enderror
+                                    <div class="form-text mt-2">
+                                        <i class="bi bi-info-circle me-1"></i>
+                                        Tanggal saat modal awal dicatat
+                                    </div>
                                 </div>
                             </div>
 
                             <div class="d-grid">
-                                <button type="submit" class="btn btn-lg text-white shadow" 
-                                        style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none; border-radius: 10px;">
-                                    <i class="bi bi-save me-2"></i>Simpan Modal Awal
-                                </button>
+                                @if($isEditing)
+                                    <div class="row g-2">
+                                        <div class="col-md-6">
+                                            <button type="submit" class="btn btn-lg text-white shadow w-100" 
+                                                    style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); border: none; border-radius: 10px;">
+                                                <i class="bi bi-check-lg me-2"></i>Update Modal Awal
+                                            </button>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <button type="button" wire:click="cancelEdit" class="btn btn-lg btn-outline-secondary shadow w-100" 
+                                                    style="border-radius: 10px;">
+                                                <i class="bi bi-x-lg me-2"></i>Batal
+                                            </button>
+                                        </div>
+                                    </div>
+                                @else
+                                    <button type="submit" class="btn btn-lg text-white shadow" 
+                                            style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none; border-radius: 10px;">
+                                        <i class="bi bi-save me-2"></i>Simpan Modal Awal
+                                    </button>
+                                @endif
                             </div>
                         </form>
                     </div>
@@ -171,14 +233,20 @@
                                             <th scope="col" class="border-0 py-3">
                                                 <i class="bi bi-calendar-event me-1"></i>Tanggal Input
                                             </th>
+                                            <th scope="col" class="border-0 py-3">
+                                                <i class="bi bi-clock me-1"></i>Waktu Dibuat
+                                            </th>
                                             <th scope="col" class="border-0 py-3 text-center">
                                                 <i class="bi bi-activity me-1"></i>Status
+                                            </th>
+                                            <th scope="col" class="border-0 py-3 text-center">
+                                                <i class="bi bi-gear me-1"></i>Aksi
                                             </th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         @foreach ($capitals as $index => $capital)
-                                            <tr class="align-middle">
+                                            <tr class="align-middle {{ $isEditing && $editingId == $capital->id ? 'table-warning' : '' }}">
                                                 <th scope="row" class="ps-4">
                                                     <div class="d-flex align-items-center">
                                                         <div class="badge bg-primary rounded-circle me-2" style="width: 25px; height: 25px; display: flex; align-items: center; justify-content: center;">
@@ -204,6 +272,21 @@
                                                         </div>
                                                         <div>
                                                             <div class="fw-medium">
+                                                                {{ $capital->tanggal_input ? $capital->tanggal_input->format('d M Y') : '-' }}
+                                                            </div>
+                                                            <small class="text-muted">
+                                                                {{ $capital->tanggal_input ? $capital->tanggal_input->format('l') : 'Tidak diatur' }}
+                                                            </small>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div class="d-flex align-items-center">
+                                                        <div class="me-2">
+                                                            <i class="bi bi-clock text-info"></i>
+                                                        </div>
+                                                        <div>
+                                                            <div class="fw-medium">
                                                                 {{ $capital->created_at->format('d M Y') }}
                                                             </div>
                                                             <small class="text-muted">
@@ -216,6 +299,29 @@
                                                     <span class="badge bg-success rounded-pill">
                                                         <i class="bi bi-check-circle me-1"></i>Tercatat
                                                     </span>
+                                                </td>
+                                                <td class="text-center">
+                                                    <div class="btn-group" role="group">
+                                                        <button 
+                                                            type="button" 
+                                                            wire:click="edit({{ $capital->id }})"
+                                                            class="btn btn-sm btn-outline-primary"
+                                                            style="border-radius: 8px 0 0 8px;"
+                                                            title="Edit Data"
+                                                        >
+                                                            <i class="bi bi-pencil-square"></i>
+                                                        </button>
+                                                        <button 
+                                                            type="button" 
+                                                            wire:click="delete({{ $capital->id }})"
+                                                            onclick="return confirm('Apakah Anda yakin ingin menghapus data modal awal sebesar Rp {{ number_format($capital->modal_awal, 0, ',', '.') }}?')"
+                                                            class="btn btn-sm btn-outline-danger"
+                                                            style="border-radius: 0 8px 8px 0;"
+                                                            title="Hapus Data"
+                                                        >
+                                                            <i class="bi bi-trash3"></i>
+                                                        </button>
+                                                    </div>
                                                 </td>
                                             </tr>
                                         @endforeach
@@ -309,6 +415,30 @@
         
         .card {
             animation: fadeIn 0.5s ease-out;
+        }
+        
+        /* Custom date input styling */
+        input[type="date"]::-webkit-calendar-picker-indicator {
+            opacity: 0.6;
+        }
+        
+        input[type="date"]:hover::-webkit-calendar-picker-indicator {
+            opacity: 1;
+        }
+        
+        /* Button group styling */
+        .btn-group .btn {
+            border: 1px solid;
+        }
+        
+        .btn-group .btn:hover {
+            transform: none;
+            z-index: 2;
+        }
+        
+        /* Edit mode highlighting */
+        .table tbody tr.table-warning {
+            background-color: rgba(255, 193, 7, 0.1) !important;
         }
     </style>
 </main>

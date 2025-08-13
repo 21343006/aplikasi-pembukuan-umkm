@@ -20,18 +20,20 @@
                 <div class="row mt-3">
                     <div class="col-md-3">
                         <label for="filterMonth" class="form-label">Pilih Bulan</label>
-                        <select wire:model.live="filterMonth" class="form-select @error('filterMonth') is-invalid @enderror">
+                        <select wire:model.live="filterMonth"
+                            class="form-select @error('filterMonth') is-invalid @enderror">
                             <option value="">-- Pilih Bulan --</option>
-                            @foreach($monthNames as $key => $name)
+                            @foreach ($monthNames as $key => $name)
                                 <option value="{{ $key }}">{{ $name }}</option>
                             @endforeach
                         </select>
                     </div>
                     <div class="col-md-3">
                         <label for="filterYear" class="form-label">Pilih Tahun</label>
-                        <select wire:model.live="filterYear" class="form-select @error('filterYear') is-invalid @enderror">
+                        <select wire:model.live="filterYear"
+                            class="form-select @error('filterYear') is-invalid @enderror">
                             <option value="">-- Pilih Tahun --</option>
-                            @foreach($this->getAvailableYears() as $year)
+                            @foreach ($this->getAvailableYears() as $year)
                                 <option value="{{ $year }}">{{ $year }}</option>
                             @endforeach
                         </select>
@@ -51,23 +53,25 @@
                 </div>
 
                 {{-- Informasi Summary --}}
-                @if(count($monthlyTotals) > 0)
+                @if (count($monthlyTotals) > 0)
                     <div class="row mt-4">
                         <div class="col-12">
                             <div class="card bg-light">
                                 <div class="card-body">
                                     <h6 class="card-title"><i class="bi bi-graph-up"></i> Ringkasan Pengeluaran</h6>
                                     <div class="row">
-                                        @foreach(array_slice($monthlyTotals, 0, 6) as $period => $total)
+                                        @foreach (array_slice($monthlyTotals, 0, 6) as $period => $total)
                                             @php
                                                 [$year, $month] = explode('-', $period);
                                                 $monthName = $monthNames[intval($month)] ?? '';
                                                 $isSelected = $filterMonth == $month && $filterYear == $year;
                                             @endphp
                                             <div class="col-md-2 col-sm-4 col-6 mb-2">
-                                                <div class="card {{ $isSelected ? 'border-primary bg-primary-subtle' : '' }}">
+                                                <div
+                                                    class="card {{ $isSelected ? 'border-primary bg-primary-subtle' : '' }}">
                                                     <div class="card-body text-center p-2">
-                                                        <small class="text-muted">{{ $monthName }} {{ $year }}</small>
+                                                        <small class="text-muted">{{ $monthName }}
+                                                            {{ $year }}</small>
                                                         <div class="fw-bold small">
                                                             Rp {{ number_format($total, 0, ',', '.') }}
                                                         </div>
@@ -87,7 +91,7 @@
                     <div class="d-flex justify-content-between align-items-center pt-4">
                         <h5 class="card-title mb-0">
                             <i class="bi bi-table"></i> Data Pengeluaran - {{ $this->monthName }} {{ $filterYear }}
-                            @if($total > 0)
+                            @if ($total > 0)
                                 <span class="badge bg-danger ms-2">
                                     Total: Rp {{ number_format($total, 0, ',', '.') }}
                                 </span>
@@ -97,7 +101,8 @@
                             {{-- Dropdown untuk memilih jumlah data per halaman --}}
                             <div class="d-flex align-items-center">
                                 <label class="form-label mb-0 me-2">Tampilkan:</label>
-                                <select wire:model.live="perPage" class="form-select form-select-sm" style="width: auto;">
+                                <select wire:model.live="perPage" class="form-select form-select-sm"
+                                    style="width: auto;">
                                     <option value="5">5</option>
                                     <option value="10">10</option>
                                     <option value="25">25</option>
@@ -126,14 +131,16 @@
                                 <tbody>
                                     @foreach ($paginatedExpenditures as $expenditure)
                                         <tr>
-                                            <td>{{ ($paginatedExpenditures->currentPage() - 1) * $paginatedExpenditures->perPage() + $loop->iteration }}</td>
+                                            <td>{{ ($paginatedExpenditures->currentPage() - 1) * $paginatedExpenditures->perPage() + $loop->iteration }}
+                                            </td>
                                             <td>
                                                 <span class="badge bg-secondary">
                                                     {{ \Carbon\Carbon::parse($expenditure->tanggal)->format('d/m/Y') }}
                                                 </span>
                                             </td>
                                             <td>
-                                                <div class="text-truncate" style="max-width: 300px;" title="{{ $expenditure->keterangan }}">
+                                                <div class="text-truncate" style="max-width: 300px;"
+                                                    title="{{ $expenditure->keterangan }}">
                                                     {{ $expenditure->keterangan }}
                                                 </div>
                                             </td>
@@ -145,8 +152,7 @@
                                             <td>
                                                 <div class="btn-group" role="group">
                                                     <button class="btn btn-sm btn-warning"
-                                                        wire:click="edit({{ $expenditure->id }})"
-                                                        title="Edit Data">
+                                                        wire:click="edit({{ $expenditure->id }})" title="Edit Data">
                                                         <i class="bi bi-pencil"></i>
                                                     </button>
                                                     <button class="btn btn-sm btn-danger"
@@ -162,7 +168,8 @@
                                 </tbody>
                                 <tfoot class="table-dark">
                                     <tr>
-                                        <th colspan="3" class="text-end">Total Pengeluaran {{ $this->monthName }} {{ $filterYear }}:</th>
+                                        <th colspan="3" class="text-end">Total Pengeluaran {{ $this->monthName }}
+                                            {{ $filterYear }}:</th>
                                         <th>
                                             <span class="badge bg-danger fs-6">
                                                 Rp {{ number_format($total, 0, ',', '.') }}
@@ -178,12 +185,12 @@
                         <div class="d-flex justify-content-between align-items-center mt-3">
                             <div class="text-muted">
                                 <small>
-                                    Menampilkan {{ $paginatedExpenditures->firstItem() ?? 0 }} 
-                                    sampai {{ $paginatedExpenditures->lastItem() ?? 0 }} 
+                                    Menampilkan {{ $paginatedExpenditures->firstItem() ?? 0 }}
+                                    sampai {{ $paginatedExpenditures->lastItem() ?? 0 }}
                                     dari {{ $paginatedExpenditures->total() }} data
                                 </small>
                             </div>
-                            
+
                             {{-- Custom Pagination Links --}}
                             @if ($paginatedExpenditures->hasPages())
                                 <nav aria-label="Pagination Navigation">
@@ -211,7 +218,8 @@
                                                 </li>
                                             @else
                                                 <li class="page-item">
-                                                    <button class="page-link" wire:click="gotoPage({{ $page }})">
+                                                    <button class="page-link"
+                                                        wire:click="gotoPage({{ $page }})">
                                                         {{ $page }}
                                                     </button>
                                                 </li>
@@ -243,7 +251,8 @@
                                 <div>
                                     <h6 class="mb-1">Belum Ada Data</h6>
                                     <p class="mb-0">
-                                        Belum ada data pengeluaran untuk bulan <strong>{{ $this->monthName }} {{ $filterYear }}</strong>.
+                                        Belum ada data pengeluaran untuk bulan <strong>{{ $this->monthName }}
+                                            {{ $filterYear }}</strong>.
                                         <br>Klik tombol "Tambah Data" untuk menambahkan data pengeluaran baru.
                                     </p>
                                 </div>
@@ -257,14 +266,28 @@
                             <div>
                                 <h6 class="mb-1">Pilih Periode</h6>
                                 <p class="mb-0">
-                                    <strong>Silakan pilih bulan dan tahun terlebih dahulu</strong> untuk melihat dan menambahkan
+                                    <strong>Silakan pilih bulan dan tahun terlebih dahulu</strong> untuk melihat dan
+                                    menambahkan
                                     data pengeluaran.
                                 </p>
                             </div>
                         </div>
                     </div>
                 @endif
-
+                {{-- Info Tambahan --}}
+                <div class="alert alert-info mt-3">
+                    <div class="d-flex align-items-start">
+                        <i class="bi bi-lightbulb fs-4 me-3"></i>
+                        <div>
+                            <h6 class="mb-2"><strong>Informasi mengenai pengeluaran:</strong></h6>
+                            <ul class="mb-0">
+                                <li>Jangan tambahkan pengeluaran yang berasal dari modal tetap</li>
+                                <li>Hanya untuk pengeluaran variabel (biaya operasional, pemasaran, dll.)</li>
+                                <li>Edit atau hapus data jika ingin mengganti data jika ada kesalahan</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </section>
@@ -278,19 +301,20 @@
                         <div class="modal-header bg-primary text-white">
                             <h5 class="modal-title">
                                 <i class="bi bi-{{ $isEdit ? 'pencil' : 'plus-circle' }}"></i>
-                                {{ $isEdit ? 'Edit' : 'Tambah' }} Pengeluaran - {{ $this->monthName }} {{ $filterYear }}
+                                {{ $isEdit ? 'Edit' : 'Tambah' }} Pengeluaran - {{ $this->monthName }}
+                                {{ $filterYear }}
                             </h5>
-                            <button type="button" class="btn-close btn-close-white" wire:click="closeModal"></button>
+                            <button type="button" class="btn-close btn-close-white"
+                                wire:click="closeModal"></button>
                         </div>
                         <div class="modal-body">
                             <div class="row">
                                 <div class="col-md-6">
                                     <div class="mb-3">
                                         <label class="form-label">Tanggal <span class="text-danger">*</span></label>
-                                        <input type="date" 
+                                        <input type="date"
                                             class="form-control @error('tanggal') is-invalid @enderror"
-                                            wire:model.live="tanggal"
-                                            min="{{ $this->minDate }}"
+                                            wire:model.live="tanggal" min="{{ $this->minDate }}"
                                             max="{{ $this->maxDate }}">
                                         @error('tanggal')
                                             <div class="invalid-feedback">{{ $message }}</div>
@@ -307,9 +331,7 @@
                                             <span class="input-group-text bg-danger text-white">Rp</span>
                                             <input type="number"
                                                 class="form-control @error('jumlah') is-invalid @enderror"
-                                                wire:model.live="jumlah" 
-                                                min="0" 
-                                                step="0.01" 
+                                                wire:model.live="jumlah" min="0" step="0.01"
                                                 placeholder="0">
                                             @error('jumlah')
                                                 <div class="invalid-feedback">{{ $message }}</div>
@@ -323,12 +345,10 @@
                                     </div>
                                 </div>
                             </div>
-                            
+
                             <div class="mb-3">
                                 <label class="form-label">Keterangan <span class="text-danger">*</span></label>
-                                <textarea class="form-control @error('keterangan') is-invalid @enderror"
-                                    wire:model.live="keterangan" 
-                                    rows="4" 
+                                <textarea class="form-control @error('keterangan') is-invalid @enderror" wire:model.live="keterangan" rows="4"
                                     placeholder="Masukkan keterangan pengeluaran (misal: Pembelian bahan baku, Biaya transportasi, dll)"
                                     maxlength="255"></textarea>
                                 @error('keterangan')
@@ -339,7 +359,7 @@
                                 </div>
                             </div>
 
-                            @if($tanggal && $keterangan && $jumlah)
+                            @if ($tanggal && $keterangan && $jumlah)
                                 <div class="card bg-light">
                                     <div class="card-body">
                                         <h6 class="card-title"><i class="bi bi-eye"></i> Preview Data:</h6>
@@ -387,8 +407,8 @@
     @endif
 
     {{-- Loading Overlay --}}
-    <div wire:loading.delay class="position-fixed top-0 start-0 w-100 h-100" 
-         style="background-color: rgba(255,255,255,0.8); z-index: 9998;">
+    <div wire:loading.delay class="position-fixed top-0 start-0 w-100 h-100"
+        style="background-color: rgba(255,255,255,0.8); z-index: 9998;">
         <div class="position-absolute top-50 start-50 translate-middle">
             <div class="text-center">
                 <div class="spinner-border text-primary mb-2" role="status" style="width: 3rem; height: 3rem;">

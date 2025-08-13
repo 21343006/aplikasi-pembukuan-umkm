@@ -15,11 +15,13 @@ class Capitalearly extends Model
 
     protected $fillable = [
         'user_id',
-        'modal_awal'
+        'modal_awal',
+        'tanggal_input'
     ];
 
     protected $casts = [
         'modal_awal' => 'decimal:2',
+        'tanggal_input' => 'date',
         'created_at' => 'datetime',
     ];
 

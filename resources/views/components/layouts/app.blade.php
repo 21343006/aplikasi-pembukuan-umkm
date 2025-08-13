@@ -227,8 +227,8 @@
                         </a>
                     </li>
                     <li>
-                        <a wire:navigate class="nav-link {{ request()->is('profitloss') ? 'active' : 'collapsed' }}"
-                            href="/profitloss">
+                        <a wire:navigate class="nav-link {{ request()->is('profit-loss') ? 'active' : 'collapsed' }}"
+                            href="/profit-loss">
                             <i class="bi bi-currency-dolar"></i><span>Laporan Rugi/Laba</span>
                         </a>
                     </li>
