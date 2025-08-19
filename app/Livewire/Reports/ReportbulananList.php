@@ -7,6 +7,8 @@ use App\Models\Reportharian;
 use App\Models\Capitalearly;
 use App\Models\Capital;
 use App\Models\FixedCost;
+use App\Models\Income;
+use App\Models\Expenditure;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
@@ -35,6 +37,7 @@ class ReportbulananList extends Component
     // Combined totals
     public $totalPemasukanBulanIni = 0;
     public $totalPengeluaranBulanIni = 0;
+    public $monthlySummaryKeterangan;
 
     /**
      * Initialize component with current month and year
@@ -80,19 +83,41 @@ class ReportbulananList extends Component
             // Calculate cumulative balance from all data before this month
             $this->saldoAwal = $this->hitungSaldoSebelumBulan($bulan, $tahun);
 
-            // Load main transaction data
-            $reportData = Reportharian::whereYear('tanggal', $tahun)
+            // Dynamically load daily income from Income model
+            $incomeDaily = Income::whereYear('tanggal', $tahun)
                 ->whereMonth('tanggal', $bulan)
-                ->orderBy('tanggal')
-                ->get();
+                ->selectRaw('tanggal, SUM(jumlah_terjual * harga_satuan) as total_masuk')
+                ->groupBy('tanggal')
+                ->get()
+                ->keyBy(function($item) {
+                    return Carbon::parse($item->tanggal)->format('Y-m-d');
+                });
 
-            $reportCollection = $reportData->map(function ($item) {
-                return (object)[
-                    'tanggal' => Carbon::parse($item->tanggal)->format('Y-m-d'),
-                    'masuk' => (float) $item->uang_masuk,
-                    'keluar' => (float) $item->uang_keluar,
-                ];
-            });
+            // Dynamically load daily expenditure from Expenditure model
+            $expenditureDaily = Expenditure::whereYear('tanggal', $tahun)
+                ->whereMonth('tanggal', $bulan)
+                ->selectRaw('tanggal, SUM(jumlah) as total_keluar')
+                ->groupBy('tanggal')
+                ->get()
+                ->keyBy(function($item) {
+                    return Carbon::parse($item->tanggal)->format('Y-m-d');
+                });
+
+            // Create a collection for daily income/expenditure
+            $dailyTransactionsCollection = collect();
+            $daysInMonth = Carbon::create($tahun, $bulan, 1)->daysInMonth;
+
+            for ($i = 1; $i <= $daysInMonth; $i++) {
+                $currentDate = Carbon::create($tahun, $bulan, $i)->format('Y-m-d');
+                $masuk = $incomeDaily->get($currentDate)->total_masuk ?? 0;
+                $keluar = $expenditureDaily->get($currentDate)->total_keluar ?? 0;
+
+                $dailyTransactionsCollection->push((object)[
+                    'tanggal' => $currentDate,
+                    'masuk' => (float) $masuk,
+                    'keluar' => (float) $keluar,
+                ]);
+            }
 
             // Load modal awal data for this month
             $modalAwalData = Capitalearly::whereYear('tanggal_input', $tahun)
@@ -149,8 +174,8 @@ class ReportbulananList extends Component
                 });
             }
 
-            // Merge all collections
-            $merged = $reportCollection
+            // Merge all collections, now including dynamic daily transactions
+            $merged = $dailyTransactionsCollection
                 ->concat($modalCollection)
                 ->concat($fixedCostCollection)
                 ->concat($modalKeluarCollection);
@@ -164,9 +189,15 @@ class ReportbulananList extends Component
 
             $this->rekapHarian = $grouped->sortKeys()->toArray();
 
-            // Calculate main transaction totals
-            $this->totalUangMasuk = $reportData->sum('uang_masuk');
-            $this->totalUangKeluar = $reportData->sum('uang_keluar');
+            // Calculate main transaction totals dynamically from Income and Expenditure
+            $this->totalUangMasuk = Income::whereYear('tanggal', $tahun)
+                                        ->whereMonth('tanggal', $bulan)
+                                        ->selectRaw('SUM(jumlah_terjual * harga_satuan) as total_income')
+                                        ->value('total_income') ?? 0;
+
+            $this->totalUangKeluar = Expenditure::whereYear('tanggal', $tahun)
+                                            ->whereMonth('tanggal', $bulan)
+                                            ->sum('jumlah') ?? 0;
 
             // Calculate modal awal total for this month
             $this->totalModalAwal = $modalAwalData->sum('modal_awal');
@@ -178,6 +209,9 @@ class ReportbulananList extends Component
             // Calculate final balance
             $this->saldoAkhirBulanIni = $this->totalPemasukanBulanIni - $this->totalPengeluaranBulanIni;
             $this->totalSaldoKumulatif = $this->saldoAwal + $this->saldoAkhirBulanIni;
+
+            // Populate monthly summary keterangan
+            $this->monthlySummaryKeterangan = "Ringkasan Bulanan - Pemasukan: " . $this->formatCurrency($this->totalPemasukanBulanIni) . ", Pengeluaran: " . $this->formatCurrency($this->totalPengeluaranBulanIni);
 
         } catch (\Exception $e) {
             Log::error('Gagal memuat rekap bulanan: ' . $e->getMessage(), [
@@ -201,14 +235,19 @@ class ReportbulananList extends Component
             $totalSaldo = 0;
             $targetDate = Carbon::create($tahun, $bulan, 1);
 
-            // Calculate from all daily reports before this month
-            $allReports = Reportharian::where('tanggal', '<', $targetDate)->get();
+            // Calculate from all Income before this month
+            $totalIncomeBefore = Income::where('tanggal', '<', $targetDate)
+                                    ->selectRaw('SUM(jumlah_terjual * harga_satuan) as total_income')
+                                    ->value('total_income') ?? 0;
+
+            // Calculate from all Expenditure before this month
+            $totalExpenditureBefore = Expenditure::where('tanggal', '<', $targetDate)
+                                            ->sum('jumlah') ?? 0;
+
+            $totalSaldo += $totalIncomeBefore - $totalExpenditureBefore;
 
             // Calculate from all initial capital before this month  
             $allModal = Capitalearly::where('tanggal_input', '<', $targetDate)->get();
-
-            // Total from daily reports
-            $totalSaldo += $allReports->sum('uang_masuk') - $allReports->sum('uang_keluar');
             
             // Total from initial capital
             $totalSaldo += $allModal->sum('modal_awal');

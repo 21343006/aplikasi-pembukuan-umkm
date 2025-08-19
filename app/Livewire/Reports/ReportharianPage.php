@@ -6,6 +6,8 @@ use Livewire\Component;
 use App\Models\Capital;
 use App\Models\Capitalearly;
 use App\Models\Reportharian;
+use App\Models\Income;
+use App\Models\Expenditure;
 use Livewire\Attributes\Title;
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
@@ -29,6 +31,13 @@ class ReportharianPage extends Component
     public $isEdit = false;
     public $editId = null;
 
+    protected $rules = [
+        'tanggal_input' => 'required|date',
+        'keterangan' => 'nullable|string',
+    ];
+
+    
+
     public function mount()
     {
         $this->tanggal_filter = now()->format('Y-m-d');
@@ -43,6 +52,13 @@ class ReportharianPage extends Component
         // Set tanggal input berdasarkan tanggal filter yang dipilih
         $this->tanggal_input = $this->tanggal_filter;
         $this->reset(['keterangan', 'uang_masuk', 'uang_keluar']);
+    }
+
+    public function updatedTanggalFilter($value)
+    {
+        $this->tanggal_filter = $value;
+        $this->tanggal_input = $value; // Update tanggal_input as well
+        $this->loadData();
     }
 
     public function closeModal()
@@ -81,8 +97,6 @@ class ReportharianPage extends Component
         $this->validate([
             'tanggal_input' => 'required|date',
             'keterangan' => 'nullable|string',
-            'uang_masuk' => 'numeric|min:0',
-            'uang_keluar' => 'numeric|min:0',
         ]);
 
         $tanggalInput = $this->tanggal_input;
@@ -164,6 +178,20 @@ class ReportharianPage extends Component
     {
         $tanggal = $this->tanggal_filter;
 
+        // Calculate daily income and expenditure dynamically
+        $daily_uang_masuk = Income::whereDate('tanggal', $tanggal)
+                                ->selectRaw('SUM(jumlah_terjual * harga_satuan) as total_income')
+                                ->value('total_income') ?? 0;
+        $daily_uang_keluar = Expenditure::whereDate('tanggal', $tanggal)->sum('jumlah') ?? 0;
+        $dynamicSummary = (object)[
+            'tanggal' => Carbon::parse($tanggal)->format('Y-m-d'),
+            'keterangan' => 'Ringkasan Harian', // Changed to just "Ringkasan Harian"
+            'uang_masuk' => $daily_uang_masuk,
+            'uang_keluar' => $daily_uang_keluar,
+            'jenis' => 'Laporan', // Changed to "Laporan"
+            'raw_id' => null, // No raw ID for dynamic entry
+        ];
+
         // Hitung saldo sampai hari sebelumnya
         $saldoSebelumnya = $this->getSaldoSampaiTanggal(
             Carbon::parse($tanggal)->subDay()->format('Y-m-d')
@@ -218,8 +246,8 @@ class ReportharianPage extends Component
                 });
         }
 
-        // Gabungkan data hari ini
-        $merged = $reportData->concat($modalAwalData)->concat($modalKeluarData)
+        // Gabungkan data hari ini, including the dynamic summary
+        $merged = collect([$dynamicSummary])->concat($reportData)->concat($modalAwalData)->concat($modalKeluarData)
             ->sortBy(function ($item) {
                 return $item->tanggal . ($item->raw_id ?? '0');
             })->values();

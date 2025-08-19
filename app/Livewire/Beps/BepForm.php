@@ -92,8 +92,11 @@ class BepForm extends Component
     {
         if (!Auth::check()) return;
         try {
-            // Untuk BEP per produk, biaya tetap tetap dihitung total sebagai asumsi dasar
-            $this->totalFixedCost = (float) FixedCost::where('user_id', Auth::id())->sum('nominal');
+            // Untuk BEP per produk, biaya tetap dihitung per bulan
+            $this->totalFixedCost = (float) FixedCost::where('user_id', Auth::id())
+                ->whereYear('tanggal', $this->selectedYear)
+                ->whereMonth('tanggal', $this->selectedMonth)
+                ->sum('nominal');
             $this->produkList = Income::where('user_id', Auth::id())
                 ->whereNotNull('produk')
                 ->where('produk', '!=', '')

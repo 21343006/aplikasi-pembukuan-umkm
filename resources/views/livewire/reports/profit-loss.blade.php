@@ -815,61 +815,6 @@
                         }
                     });
                 },
-
-                createPieChart(data) {
-                    if (!this.elements.pieCanvas) {
-                        console.error('❌ Pie Chart canvas not found!');
-                        return;
-                    }
-
-                    const totalIncome = data.pendapatan.reduce((sum, val) => sum + val, 0);
-                    const totalExpenditure = data.pengeluaran.reduce((sum, val) => sum + val, 0);
-
-                    if (totalIncome <= 0 && totalExpenditure <= 0) {
-                        // Hide pie chart canvas if no data
-                        this.elements.pieCanvas.style.display = 'none';
-                        return;
-                    }
-                    this.elements.pieCanvas.style.display = 'block';
-
-                    const ctx = this.elements.pieCanvas.getContext('2d');
-                    this.pieChart = new Chart(ctx, {
-                        type: 'doughnut',
-                        data: {
-                            labels: ['Pendapatan', 'Pengeluaran'],
-                            datasets: [{
-                                data: [totalIncome, totalExpenditure],
-                                backgroundColor: ['rgba(40, 167, 69, 0.8)', 'rgba(220, 53, 69, 0.8)'],
-                                borderColor: ['rgba(40, 167, 69, 1)', 'rgba(220, 53, 69, 1)'],
-                                borderWidth: 2
-                            }]
-                        },
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            animation: { duration: 800 },
-                            plugins: {
-                                title: { 
-                                    display: true, 
-                                    text: 'Proporsi Keuangan'
-                                },
-                                legend: { position: 'bottom' },
-                                tooltip: {
-                                    callbacks: {
-                                        label: function(context) {
-                                            const label = context.label || '';
-                                            const value = context.raw;
-                                            const total = totalIncome + totalExpenditure;
-                                            const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : '0';
-                                            const formattedValue = 'Rp ' + Math.abs(value).toLocaleString('id-ID');
-                                            return `${label}: ${formattedValue} (${percentage}%)`;
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    });
-                }
             };
 
             // Initialize chart with the data from the initial page load
