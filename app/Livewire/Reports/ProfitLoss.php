@@ -9,379 +9,753 @@ use App\Models\Expenditure;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 
 class ProfitLoss extends Component
 {
     #[Title('Laporan Rugi Laba')]
 
-    // Properties dengan type declaration yang benar
-    public string $selectedYear = '';
-    public string $selectedMonth = '';
-    public bool $showDetails = false;
-    public string $reportType = 'yearly';
+    // Core properties
+    public $selectedYear = '';
+    public $selectedMonth = '';
+    public $showDetails = false;
+    public $reportType = 'yearly';
 
-    // Array nama bulan dalam bahasa Indonesia
+    // Data arrays
+    public array $yearlyData = [];
+    public array $monthlyData = [];
+    public array $dailyData = [];
+
+    // Month names in Indonesian
     public array $monthNames = [
         1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April',
         5 => 'Mei', 6 => 'Juni', 7 => 'Juli', 8 => 'Agustus',
         9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember',
     ];
 
-    public function mount(): void
+    public function mount()
+    {
+        try {
+            $this->selectedYear = (string) now()->year;
+            $this->reportType = 'yearly';
+            $this->selectedMonth = '';
+            $this->showDetails = false;
+            $this->resetDataArrays();
+            $this->loadData();
+
+            Log::info('ProfitLoss mounted successfully', [
+                'user_id' => Auth::id(),
+                'selectedYear' => $this->selectedYear,
+                'reportType' => $this->reportType
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error in mount: ' . $e->getMessage());
+            $this->resetToDefaults();
+        }
+    }
+
+    private function resetToDefaults()
     {
         $this->selectedYear = (string) now()->year;
         $this->reportType = 'yearly';
         $this->selectedMonth = '';
-        
-        // Debug log
-        Log::info('ProfitLoss mounted', [
-            'user_id' => Auth::id(),
-            'selectedYear' => $this->selectedYear,
-            'reportType' => $this->reportType
-        ]);
+        $this->showDetails = false;
+        $this->resetDataArrays();
     }
 
-    public function updatedSelectedYear(): void
+    private function resetDataArrays()
     {
-        if ($this->reportType === 'monthly') {
-            $this->selectedMonth = '';
+        $this->yearlyData = [];
+        $this->monthlyData = [];
+        $this->dailyData = [];
+    }
+
+    public function updatedReportType()
+    {
+        try {
+            switch ($this->reportType) {
+                case 'all':
+                    $this->selectedYear = '';
+                    $this->selectedMonth = '';
+                    break;
+                case 'yearly':
+                    $this->selectedYear = $this->selectedYear ?: (string) now()->year;
+                    $this->selectedMonth = '';
+                    break;
+                case 'monthly':
+                    $this->selectedYear = $this->selectedYear ?: (string) now()->year;
+                    $this->selectedMonth = '';
+                    break;
+            }
+
+            $this->showDetails = false;
+            $this->resetDataArrays();
+            $this->loadData();
+
+        } catch (\Exception $e) {
+            Log::error('Error in updatedReportType: ' . $e->getMessage());
+            session()->flash('error', 'Terjadi kesalahan saat mengubah jenis laporan.');
+            $this->resetToDefaults();
         }
-        Log::info('Year updated', ['selectedYear' => $this->selectedYear]);
     }
 
-    public function updatedReportType(): void
+    public function updatedSelectedYear()
     {
-        switch($this->reportType) {
-            case 'all':
-                $this->selectedYear = '';
+        try {
+            if ($this->reportType === 'monthly') {
                 $this->selectedMonth = '';
-                break;
-            case 'yearly':
+            }
+
+            if ($this->selectedYear && !is_numeric($this->selectedYear)) {
                 $this->selectedYear = (string) now()->year;
-                $this->selectedMonth = '';
-                break;
-            case 'monthly':
+                session()->flash('error', 'Tahun yang dipilih tidak valid.');
+            }
+
+            if ($this->selectedYear && ((int)$this->selectedYear < 2000 || (int)$this->selectedYear > 2099)) {
                 $this->selectedYear = (string) now()->year;
-                $this->selectedMonth = '';
-                break;
+                session()->flash('error', 'Tahun harus antara 2000-2099.');
+            }
+
+            $this->resetDataArrays();
+            $this->loadData();
+
+        } catch (\Exception $e) {
+            Log::error('Error in updatedSelectedYear: ' . $e->getMessage());
+            session()->flash('error', 'Terjadi kesalahan saat mengubah tahun.');
         }
-        Log::info('Report type updated', ['reportType' => $this->reportType]);
     }
 
-    public function toggleDetails(): void
+    public function updatedSelectedMonth()
     {
-        $this->showDetails = !$this->showDetails;
+        try {
+            $this->resetDataArrays();
+            $this->loadData();
+
+        } catch (\Exception $e) {
+            Log::error('Error in updatedSelectedMonth: ' . $e->getMessage());
+            session()->flash('error', 'Terjadi kesalahan saat mengubah bulan.');
+        }
     }
 
-    private function hasValidMonthSelection(): bool
+    public function toggleDetails()
     {
-        return !empty($this->selectedMonth) && 
-               is_numeric($this->selectedMonth) && 
-               (int)$this->selectedMonth >= 1 && 
-               (int)$this->selectedMonth <= 12;
+        try {
+            $this->showDetails = !$this->showDetails;
+            $this->loadData();
+
+        } catch (\Exception $e) {
+            Log::error('Error in toggleDetails: ' . $e->getMessage());
+            session()->flash('error', 'Terjadi kesalahan saat mengubah tampilan detail.');
+        }
     }
 
-    /**
-     * PERBAIKAN UTAMA: Query yang lebih robust untuk total pendapatan
-     */
-    public function getTotalPendapatan(): float
+    public function loadData()
     {
         try {
             if (!Auth::check()) {
-                Log::warning('User not authenticated in getTotalPendapatan');
+                $this->resetToDefaults();
+                // Dispatch empty data if not authenticated
+                $this->dispatch('update-chart', chartData: $this->getEmptyChartData(), hasValidChartData: false);
+                return;
+            }
+
+            // Always load yearly data first
+            $this->loadYearlyData();
+
+            // Load monthly data based on conditions
+            if (($this->reportType === 'yearly' && $this->selectedYear && $this->showDetails) ||
+                ($this->reportType === 'monthly' && $this->selectedYear)
+            ) {
+                $this->loadMonthlyData();
+            }
+            
+            // Load daily data if specific month is selected
+            if ($this->reportType === 'monthly' && $this->selectedYear && $this->selectedMonth) {
+                $this->loadDailyData();
+            }
+
+            // Always dispatch the latest chart data
+            $this->dispatch('update-chart', chartData: $this->chartData, hasValidChartData: $this->hasValidChartData);
+
+        } catch (\Exception $e) {
+            Log::error('Error in loadData: ' . $e->getMessage());
+            session()->flash('error', 'Terjadi kesalahan saat memuat data laporan.');
+            $this->resetToDefaults();
+            // Dispatch empty data on error
+            $this->dispatch('update-chart', chartData: $this->getEmptyChartData(), hasValidChartData: false);
+        }
+    }
+
+    public function loadYearlyData()
+    {
+        try {
+            if (!Auth::check()) {
+                $this->yearlyData = [];
+                return;
+            }
+
+            $years = $this->getAvailableYears();
+            $this->yearlyData = [];
+
+            foreach ($years as $year) {
+                $totalIncome = Income::where('user_id', Auth::id())
+                    ->whereYear('tanggal', $year)
+                    ->get()
+                    ->sum(function ($income) {
+                        return ((float) ($income->jumlah_terjual ?? 0)) * ((float) ($income->harga_satuan ?? 0));
+                    });
+
+                $totalExpenditure = (float) Expenditure::where('user_id', Auth::id())
+                    ->whereYear('tanggal', $year)
+                    ->sum('jumlah');
+
+                $profit = $totalIncome - $totalExpenditure;
+                $margin = $totalIncome > 0 ? ($profit / $totalIncome) * 100 : 0;
+
+                $this->yearlyData[] = [
+                    'year' => $year,
+                    'pendapatan' => $totalIncome,
+                    'pengeluaran' => $totalExpenditure,
+                    'laba_rugi' => $profit,
+                    'margin' => $margin,
+                ];
+            }
+
+        } catch (\Exception $e) {
+            $this->yearlyData = [];
+            Log::error('Error loading yearly data: ' . $e->getMessage());
+        }
+    }
+
+    public function loadMonthlyData()
+    {
+        try {
+            if (!Auth::check() || !$this->selectedYear || !is_numeric($this->selectedYear)) {
+                $this->monthlyData = [];
+                return;
+            }
+
+            $this->monthlyData = [];
+            $year = (int) $this->selectedYear;
+
+            for ($month = 1; $month <= 12; $month++) {
+                $monthIncome = Income::where('user_id', Auth::id())
+                    ->whereMonth('tanggal', $month)
+                    ->whereYear('tanggal', $year)
+                    ->get()
+                    ->sum(function ($income) {
+                        return ((float) ($income->jumlah_terjual ?? 0)) * ((float) ($income->harga_satuan ?? 0));
+                    });
+
+                $monthExpenditure = (float) Expenditure::where('user_id', Auth::id())
+                    ->whereMonth('tanggal', $month)
+                    ->whereYear('tanggal', $year)
+                    ->sum('jumlah');
+
+                $profit = $monthIncome - $monthExpenditure;
+                $margin = $monthIncome > 0 ? ($profit / $monthIncome) * 100 : 0;
+
+                $this->monthlyData[] = [
+                    'month' => $month,
+                    'month_name' => $this->monthNames[$month],
+                    'pendapatan' => $monthIncome,
+                    'pengeluaran' => $monthExpenditure,
+                    'laba_rugi' => $profit,
+                    'margin' => $margin,
+                ];
+            }
+
+        } catch (\Exception $e) {
+            $this->monthlyData = [];
+            Log::error('Error loading monthly data: ' . $e->getMessage());
+        }
+    }
+    
+    public function loadDailyData()
+    {
+        try {
+            $year = (int)$this->selectedYear;
+            $month = (int)$this->selectedMonth;
+            
+            if (!$year || !$month) {
+                $this->dailyData = [];
+                return;
+            }
+
+            // Fetch all incomes for the month once
+            $incomes = Income::where('user_id', Auth::id())
+                ->whereYear('tanggal', $year)
+                ->whereMonth('tanggal', $month)
+                ->get()
+                ->groupBy(fn($item) => Carbon::parse($item->tanggal)->day);
+
+            // Fetch all expenditures for the month once
+            $expenditures = Expenditure::where('user_id', Auth::id())
+                ->whereYear('tanggal', $year)
+                ->whereMonth('tanggal', $month)
+                ->get()
+                ->groupBy(fn($item) => Carbon::parse($item->tanggal)->day);
+
+            $this->dailyData = [];
+            $daysInMonth = Carbon::create($year, $month, 1)->daysInMonth;
+
+            for ($day = 1; $day <= $daysInMonth; $day++) {
+                $dayIncome = $incomes->get($day, collect())->sum(function ($income) {
+                    return ($income->jumlah_terjual ?? 0) * ($income->harga_satuan ?? 0);
+                });
+
+                $dayExpenditure = $expenditures->get($day, collect())->sum('jumlah');
+
+                if ($dayIncome > 0 || $dayExpenditure > 0) {
+                    $profit = $dayIncome - $dayExpenditure;
+                    $margin = $dayIncome > 0 ? ($profit / $dayIncome) * 100 : 0;
+
+                    $this->dailyData[] = [
+                        'day' => $day,
+                        'pendapatan' => $dayIncome,
+                        'pengeluaran' => $dayExpenditure,
+                        'laba_rugi' => $profit,
+                        'margin' => $margin,
+                    ];
+                }
+            }
+        } catch(\Exception $e) {
+            $this->dailyData = [];
+            Log::error('Error loading daily data: ' . $e->getMessage());
+        }
+    }
+
+    // ===============================
+    // ENHANCED CHART DATA GENERATION
+    // ===============================
+
+    public function getChartDataProperty()
+    {
+        try {
+            if (!Auth::check()) {
+                return $this->getEmptyChartData();
+            }
+
+            $chartData = null;
+
+            // Generate chart based on current filters and selections
+            switch ($this->reportType) {
+                case 'all':
+                    $chartData = $this->generateYearlyChart();
+                    break;
+
+                case 'yearly':
+                    if (!empty($this->selectedYear) && is_numeric($this->selectedYear)) {
+                        $chartData = $this->generateMonthlyChart((int)$this->selectedYear);
+                    } else {
+                        $chartData = $this->generateYearlyChart();
+                    }
+                    break;
+
+                case 'monthly':
+                    if (!empty($this->selectedYear) && is_numeric($this->selectedYear)) {
+                        if (!empty($this->selectedMonth) && is_numeric($this->selectedMonth)) {
+                            // Daily chart for specific month
+                            $chartData = $this->generateDailyChart((int)$this->selectedYear, (int)$this->selectedMonth);
+                        } else {
+                            // Monthly chart for year
+                            $chartData = $this->generateMonthlyChart((int)$this->selectedYear);
+                        }
+                    } else {
+                        $chartData = $this->generateYearlyChart();
+                    }
+                    break;
+
+                default:
+                    $chartData = $this->generateYearlyChart();
+                    break;
+            }
+
+            // Validate and sanitize
+            if ($chartData && is_array($chartData)) {
+                $chartData = $this->sanitizeChartData($chartData);
+                
+                if ($this->chartHasMeaningfulData($chartData)) {
+                    return $chartData;
+                }
+            }
+
+            return $this->getEmptyChartData();
+
+        } catch (\Exception $e) {
+            Log::error('Error generating chart data: ' . $e->getMessage());
+            return $this->getEmptyChartData();
+        }
+    }
+
+    private function chartHasMeaningfulData($chartData)
+    {
+        if (empty($chartData['labels']) || 
+            empty($chartData['pendapatan']) || 
+            empty($chartData['pengeluaran']) || 
+            empty($chartData['profit'])) {
+            return false;
+        }
+
+        $totalIncome = array_sum(array_map(fn($val) => (float)$val, $chartData['pendapatan']));
+        $totalExpense = array_sum(array_map(fn($val) => (float)$val, $chartData['pengeluaran']));
+
+        return ($totalIncome > 0 || $totalExpense > 0);
+    }
+
+    private function generateYearlyChart()
+    {
+        try {
+            $availableYears = $this->getAvailableYears();
+
+            if (empty($availableYears)) {
+                return $this->getEmptyChartData();
+            }
+
+            sort($availableYears);
+
+            $labels = [];
+            $pendapatanData = [];
+            $pengeluaranData = [];
+            $profitData = [];
+            $hasData = false;
+
+            foreach ($availableYears as $year) {
+                $yearIncome = Income::where('user_id', Auth::id())
+                    ->whereYear('tanggal', $year)
+                    ->get()
+                    ->sum(function ($income) {
+                        return ((float) ($income->jumlah_terjual ?? 0)) * ((float) ($income->harga_satuan ?? 0));
+                    });
+
+                $yearExpenditure = (float) Expenditure::where('user_id', Auth::id())
+                    ->whereYear('tanggal', $year)
+                    ->sum('jumlah');
+
+                $profit = $yearIncome - $yearExpenditure;
+
+                $labels[] = (string) $year;
+                $pendapatanData[] = $yearIncome;
+                $pengeluaranData[] = $yearExpenditure;
+                $profitData[] = $profit;
+                
+                if ($yearIncome > 0 || $yearExpenditure > 0) {
+                    $hasData = true;
+                }
+            }
+
+            if (!$hasData) {
+                return $this->getEmptyChartData();
+            }
+
+            return [
+                'labels' => $labels,
+                'pendapatan' => $pendapatanData,
+                'pengeluaran' => $pengeluaranData,
+                'profit' => $profitData,
+                'type' => 'yearly'
+            ];
+
+        } catch (\Exception $e) {
+            Log::error('Error generating yearly chart: ' . $e->getMessage());
+            return $this->getEmptyChartData();
+        }
+    }
+
+    private function generateMonthlyChart($year = null)
+    {
+        try {
+            if ($year === null) {
+                $year = !empty($this->selectedYear) && is_numeric($this->selectedYear)
+                       ? (int) $this->selectedYear
+                       : now()->year;
+            }
+
+            $labels = [];
+            $pendapatanData = [];
+            $pengeluaranData = [];
+            $profitData = [];
+            $hasData = false;
+
+            for ($month = 1; $month <= 12; $month++) {
+                $monthIncome = Income::where('user_id', Auth::id())
+                    ->whereYear('tanggal', $year)
+                    ->whereMonth('tanggal', $month)
+                    ->get()
+                    ->sum(function ($income) {
+                        return ((float) ($income->jumlah_terjual ?? 0)) * ((float) ($income->harga_satuan ?? 0));
+                    });
+
+                $monthExpenditure = (float) Expenditure::where('user_id', Auth::id())
+                    ->whereYear('tanggal', $year)
+                    ->whereMonth('tanggal', $month)
+                    ->sum('jumlah');
+
+                $profit = $monthIncome - $monthExpenditure;
+
+                $labels[] = substr($this->monthNames[$month], 0, 3);
+                $pendapatanData[] = $monthIncome;
+                $pengeluaranData[] = $monthExpenditure;
+                $profitData[] = $profit;
+                
+                if ($monthIncome > 0 || $monthExpenditure > 0) {
+                    $hasData = true;
+                }
+            }
+
+            if (!$hasData) {
+                return $this->getEmptyChartData();
+            }
+
+            return [
+                'labels' => $labels,
+                'pendapatan' => $pendapatanData,
+                'pengeluaran' => $pengeluaranData,
+                'profit' => $profitData,
+                'type' => 'monthly',
+                'year' => $year
+            ];
+
+        } catch (\Exception $e) {
+            Log::error('Error generating monthly chart: ' . $e->getMessage());
+            return $this->getEmptyChartData();
+        }
+    }
+
+    private function generateDailyChart($year = null, $month = null)
+    {
+        try {
+            if ($year === null || $month === null) {
+                if (empty($this->selectedYear) || empty($this->selectedMonth) ||
+                    !is_numeric($this->selectedYear) || !is_numeric($this->selectedMonth)) {
+                    return $this->generateMonthlyChart();
+                }
+                $year = (int) $this->selectedYear;
+                $month = (int) $this->selectedMonth;
+            }
+
+            $daysInMonth = Carbon::create($year, $month, 1)->daysInMonth;
+
+            $labels = [];
+            $pendapatanData = [];
+            $pengeluaranData = [];
+            $profitData = [];
+            $hasData = false;
+
+            for ($day = 1; $day <= $daysInMonth; $day++) {
+                $dayIncome = Income::where('user_id', Auth::id())
+                    ->whereYear('tanggal', $year)
+                    ->whereMonth('tanggal', $month)
+                    ->whereDay('tanggal', $day)
+                    ->get()
+                    ->sum(function ($income) {
+                        return ((float) ($income->jumlah_terjual ?? 0)) * ((float) ($income->harga_satuan ?? 0));
+                    });
+
+                $dayExpenditure = (float) Expenditure::where('user_id', Auth::id())
+                    ->whereYear('tanggal', $year)
+                    ->whereMonth('tanggal', $month)
+                    ->whereDay('tanggal', $day)
+                    ->sum('jumlah');
+
+                $profit = $dayIncome - $dayExpenditure;
+
+                $labels[] = (string) $day;
+                $pendapatanData[] = $dayIncome;
+                $pengeluaranData[] = $dayExpenditure;
+                $profitData[] = $profit;
+                
+                if ($dayIncome > 0 || $dayExpenditure > 0) {
+                    $hasData = true;
+                }
+            }
+
+            if (!$hasData) {
+                return $this->getEmptyChartData();
+            }
+
+            return [
+                'labels' => $labels,
+                'pendapatan' => $pendapatanData,
+                'pengeluaran' => $pengeluaranData,
+                'profit' => $profitData,
+                'type' => 'daily',
+                'year' => $year,
+                'month' => $month
+            ];
+
+        } catch (\Exception $e) {
+            Log::error('Error generating daily chart: ' . $e->getMessage());
+            return $this->getEmptyChartData();
+        }
+    }
+
+    private function sanitizeChartData($chartData)
+    {
+        if (!is_array($chartData)) {
+            return $this->getEmptyChartData();
+        }
+
+        $requiredKeys = ['labels', 'pendapatan', 'pengeluaran', 'profit'];
+        foreach ($requiredKeys as $key) {
+            if (!isset($chartData[$key]) || !is_array($chartData[$key])) {
+                $chartData[$key] = [];
+            }
+        }
+
+        // Ensure all arrays have the same length
+        $maxLength = max(
+            count($chartData['labels']),
+            count($chartData['pendapatan']),
+            count($chartData['pengeluaran']),
+            count($chartData['profit'])
+        );
+
+        // Pad arrays to same length
+        while (count($chartData['labels']) < $maxLength) {
+            $chartData['labels'][] = '';
+        }
+        while (count($chartData['pendapatan']) < $maxLength) {
+            $chartData['pendapatan'][] = 0;
+        }
+        while (count($chartData['pengeluaran']) < $maxLength) {
+            $chartData['pengeluaran'][] = 0;
+        }
+        while (count($chartData['profit']) < $maxLength) {
+            $chartData['profit'][] = 0;
+        }
+
+        // Ensure all numeric values are properly formatted
+        $chartData['pendapatan'] = array_map(fn($val) => (float) ($val ?? 0), $chartData['pendapatan']);
+        $chartData['pengeluaran'] = array_map(fn($val) => (float) ($val ?? 0), $chartData['pengeluaran']);
+        $chartData['profit'] = array_map(fn($val) => (float) ($val ?? 0), $chartData['profit']);
+
+        return $chartData;
+    }
+
+    private function getEmptyChartData()
+    {
+        return [
+            'labels' => [],
+            'pendapatan' => [],
+            'pengeluaran' => [],
+            'profit' => [],
+            'type' => 'empty'
+        ];
+    }
+
+    public function getHasValidChartDataProperty()
+    {
+        try {
+            $chartData = $this->chartData;
+
+            if (empty($chartData) || !is_array($chartData)) {
+                return false;
+            }
+
+            if (empty($chartData['labels']) || !is_array($chartData['labels'])) {
+                return false;
+            }
+
+            return $this->chartHasMeaningfulData($chartData);
+
+        } catch (\Exception $e) {
+            Log::error('Error in hasValidChartData: ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    // ===============================
+    // COMPUTED PROPERTIES FOR TOTALS
+    // ===============================
+
+    public function getTotalPendapatanProperty()
+    {
+        try {
+            if (!Auth::check()) {
                 return 0.0;
             }
 
-            // PERBAIKAN: Gunakan query builder tanpa global scope yang bermasalah
-            $query = DB::table('incomes')->where('user_id', Auth::id());
+            $query = Income::where('user_id', Auth::id());
 
-            // Debug: Log jumlah total record user
-            $totalRecords = DB::table('incomes')->where('user_id', Auth::id())->count();
-            Log::info('Total income records for user', ['count' => $totalRecords, 'user_id' => Auth::id()]);
+            switch ($this->reportType) {
+                case 'yearly':
+                    if (!empty($this->selectedYear) && is_numeric($this->selectedYear)) {
+                        $query->whereYear('tanggal', (int)$this->selectedYear);
+                    }
+                    break;
 
-            // Apply filters berdasarkan report type
-            if ($this->reportType === 'yearly' && !empty($this->selectedYear) && is_numeric($this->selectedYear)) {
-                $query->whereYear('tanggal', (int)$this->selectedYear);
-                Log::info('Applied yearly filter', ['year' => $this->selectedYear]);
-            } elseif ($this->reportType === 'monthly' && !empty($this->selectedYear) && $this->hasValidMonthSelection()) {
-                $query->whereYear('tanggal', (int)$this->selectedYear)
-                      ->whereMonth('tanggal', (int)$this->selectedMonth);
-                Log::info('Applied monthly filter', ['year' => $this->selectedYear, 'month' => $this->selectedMonth]);
+                case 'monthly':
+                    if (!empty($this->selectedYear) && is_numeric($this->selectedYear)) {
+                        $query->whereYear('tanggal', (int)$this->selectedYear);
+
+                        if (!empty($this->selectedMonth) && is_numeric($this->selectedMonth)) {
+                            $query->whereMonth('tanggal', (int)$this->selectedMonth);
+                        }
+                    }
+                    break;
             }
 
-            // Debug: Log filtered count
-            $filteredCount = (clone $query)->count();
-            Log::info('Filtered income records', ['count' => $filteredCount]);
+            $total = $query->get()->sum(function ($income) {
+                return ((float) ($income->jumlah_terjual ?? 0)) * ((float) ($income->harga_satuan ?? 0));
+            });
 
-            // PERBAIKAN: Hitung total dengan handling null values yang lebih baik
-            $result = $query->selectRaw('
-                COALESCE(
-                    SUM(
-                        CAST(IFNULL(jumlah_terjual, 0) AS DECIMAL(15,2)) * 
-                        CAST(IFNULL(harga_satuan, 0) AS DECIMAL(15,2))
-                    ), 
-                    0
-                ) as total
-            ')->first();
-
-            $total = (float)($result->total ?? 0);
-            
-            Log::info('Calculated total pendapatan', [
-                'total' => $total,
-                'reportType' => $this->reportType,
-                'selectedYear' => $this->selectedYear,
-                'selectedMonth' => $this->selectedMonth
-            ]);
-
-            return $total;
-
+            return (float) $total;
         } catch (\Exception $e) {
-            Log::error('Error calculating total pendapatan: ' . $e->getMessage(), [
-                'user_id' => Auth::id(),
-                'reportType' => $this->reportType,
-                'selectedYear' => $this->selectedYear,
-                'selectedMonth' => $this->selectedMonth,
-                'trace' => $e->getTraceAsString()
-            ]);
+            Log::error('Error calculating total pendapatan: ' . $e->getMessage());
             return 0.0;
         }
     }
 
-    public function getTotalPengeluaran(): float
+    public function getTotalPengeluaranProperty()
     {
         try {
             if (!Auth::check()) {
-                Log::warning('User not authenticated in getTotalPengeluaran');
                 return 0.0;
             }
 
-            // PERBAIKAN: Gunakan query builder langsung
-            $query = DB::table('expenditures')->where('user_id', Auth::id());
+            $query = Expenditure::where('user_id', Auth::id());
 
-            // Debug: Log jumlah total record user
-            $totalRecords = DB::table('expenditures')->where('user_id', Auth::id())->count();
-            Log::info('Total expenditure records for user', ['count' => $totalRecords, 'user_id' => Auth::id()]);
+            switch ($this->reportType) {
+                case 'yearly':
+                    if (!empty($this->selectedYear) && is_numeric($this->selectedYear)) {
+                        $query->whereYear('tanggal', (int)$this->selectedYear);
+                    }
+                    break;
 
-            // Apply filters
-            if ($this->reportType === 'yearly' && !empty($this->selectedYear) && is_numeric($this->selectedYear)) {
-                $query->whereYear('tanggal', (int)$this->selectedYear);
-            } elseif ($this->reportType === 'monthly' && !empty($this->selectedYear) && $this->hasValidMonthSelection()) {
-                $query->whereYear('tanggal', (int)$this->selectedYear)
-                      ->whereMonth('tanggal', (int)$this->selectedMonth);
+                case 'monthly':
+                    if (!empty($this->selectedYear) && is_numeric($this->selectedYear)) {
+                        $query->whereYear('tanggal', (int)$this->selectedYear);
+
+                        if (!empty($this->selectedMonth) && is_numeric($this->selectedMonth)) {
+                            $query->whereMonth('tanggal', (int)$this->selectedMonth);
+                        }
+                    }
+                    break;
             }
 
-            // Debug: Log filtered count
-            $filteredCount = (clone $query)->count();
-            Log::info('Filtered expenditure records', ['count' => $filteredCount]);
-
-            // Hitung total
-            $result = $query->selectRaw('
-                COALESCE(
-                    SUM(CAST(IFNULL(jumlah, 0) AS DECIMAL(15,2))), 
-                    0
-                ) as total
-            ')->first();
-
-            $total = (float)($result->total ?? 0);
-            
-            Log::info('Calculated total pengeluaran', [
-                'total' => $total,
-                'reportType' => $this->reportType,
-                'selectedYear' => $this->selectedYear,
-                'selectedMonth' => $this->selectedMonth
-            ]);
-
-            return $total;
-
+            $total = $query->sum('jumlah') ?? 0;
+            return (float) $total;
         } catch (\Exception $e) {
-            Log::error('Error calculating total pengeluaran: ' . $e->getMessage(), [
-                'user_id' => Auth::id(),
-                'reportType' => $this->reportType,
-                'selectedYear' => $this->selectedYear,
-                'selectedMonth' => $this->selectedMonth,
-                'trace' => $e->getTraceAsString()
-            ]);
+            Log::error('Error calculating total pengeluaran: ' . $e->getMessage());
             return 0.0;
         }
     }
 
-    public function getLabaRugi(): float
+    public function getLabaRugiProperty()
     {
-        $pendapatan = $this->getTotalPendapatan();
-        $pengeluaran = $this->getTotalPengeluaran();
-        $labaRugi = $pendapatan - $pengeluaran;
-        
-        Log::info('Calculated laba rugi', [
-            'pendapatan' => $pendapatan,
-            'pengeluaran' => $pengeluaran,
-            'labaRugi' => $labaRugi
-        ]);
-        
-        return $labaRugi;
+        return $this->totalPendapatan - $this->totalPengeluaran;
     }
 
-    public function getMarginProfit(): float
+    public function getMarginProfitProperty()
     {
-        $totalPendapatan = $this->getTotalPendapatan();
+        $totalPendapatan = $this->totalPendapatan;
         if ($totalPendapatan > 0) {
-            $margin = ($this->getLabaRugi() / $totalPendapatan) * 100;
-            Log::info('Calculated margin profit', ['margin' => $margin]);
-            return $margin;
+            return ($this->labaRugi / $totalPendapatan) * 100;
         }
         return 0.0;
     }
 
-    /**
-     * PERBAIKAN: Yearly data dengan query builder langsung
-     */
-    public function getYearlyData(): array
-    {
-        try {
-            if (!Auth::check()) {
-                return [];
-            }
-
-            $years = range(now()->year, 2020);
-            $yearlyData = [];
-
-            foreach ($years as $year) {
-                // PERBAIKAN: Query pendapatan per tahun dengan DB query builder
-                $pendapatanResult = DB::table('incomes')
-                    ->where('user_id', Auth::id())
-                    ->whereYear('tanggal', $year)
-                    ->selectRaw('
-                        COALESCE(
-                            SUM(
-                                CAST(IFNULL(jumlah_terjual, 0) AS DECIMAL(15,2)) * 
-                                CAST(IFNULL(harga_satuan, 0) AS DECIMAL(15,2))
-                            ), 
-                            0
-                        ) as total
-                    ')
-                    ->first();
-
-                $pengeluaranResult = DB::table('expenditures')
-                    ->where('user_id', Auth::id())
-                    ->whereYear('tanggal', $year)
-                    ->selectRaw('
-                        COALESCE(
-                            SUM(CAST(IFNULL(jumlah, 0) AS DECIMAL(15,2))), 
-                            0
-                        ) as total
-                    ')
-                    ->first();
-
-                $pendapatan = (float)($pendapatanResult->total ?? 0);
-                $pengeluaran = (float)($pengeluaranResult->total ?? 0);
-                
-                $labaRugi = $pendapatan - $pengeluaran;
-                $margin = $pendapatan > 0 ? ($labaRugi / $pendapatan) * 100 : 0;
-
-                // Hanya tampilkan tahun yang memiliki data
-                if ($pendapatan > 0 || $pengeluaran > 0) {
-                    $yearlyData[] = [
-                        'year' => $year,
-                        'pendapatan' => $pendapatan,
-                        'pengeluaran' => $pengeluaran,
-                        'laba_rugi' => $labaRugi,
-                        'margin' => $margin,
-                    ];
-                }
-            }
-
-            Log::info('Generated yearly data', ['count' => count($yearlyData)]);
-            return $yearlyData;
-        } catch (\Exception $e) {
-            Log::error('Error getting yearly data: ' . $e->getMessage(), [
-                'user_id' => Auth::id(),
-                'trace' => $e->getTraceAsString()
-            ]);
-            return [];
-        }
-    }
-
-    /**
-     * PERBAIKAN: Monthly data dengan query builder langsung
-     */
-    public function getMonthlyData(): array
-    {
-        try {
-            if (!Auth::check() || empty($this->selectedYear) || !is_numeric($this->selectedYear)) {
-                Log::info('Invalid conditions for monthly data', [
-                    'auth' => Auth::check(),
-                    'selectedYear' => $this->selectedYear
-                ]);
-                return [];
-            }
-
-            $monthlyData = [];
-            $year = (int)$this->selectedYear;
-
-            for ($month = 1; $month <= 12; $month++) {
-                // Query pendapatan per bulan
-                $pendapatanResult = DB::table('incomes')
-                    ->where('user_id', Auth::id())
-                    ->whereYear('tanggal', $year)
-                    ->whereMonth('tanggal', $month)
-                    ->selectRaw('
-                        COALESCE(
-                            SUM(
-                                CAST(IFNULL(jumlah_terjual, 0) AS DECIMAL(15,2)) * 
-                                CAST(IFNULL(harga_satuan, 0) AS DECIMAL(15,2))
-                            ), 
-                            0
-                        ) as total
-                    ')
-                    ->first();
-
-                $pengeluaranResult = DB::table('expenditures')
-                    ->where('user_id', Auth::id())
-                    ->whereYear('tanggal', $year)
-                    ->whereMonth('tanggal', $month)
-                    ->selectRaw('
-                        COALESCE(
-                            SUM(CAST(IFNULL(jumlah, 0) AS DECIMAL(15,2))), 
-                            0
-                        ) as total
-                    ')
-                    ->first();
-
-                $pendapatan = (float)($pendapatanResult->total ?? 0);
-                $pengeluaran = (float)($pengeluaranResult->total ?? 0);
-                
-                $labaRugi = $pendapatan - $pengeluaran;
-                $margin = $pendapatan > 0 ? ($labaRugi / $pendapatan) * 100 : 0;
-
-                // Hanya tampilkan bulan yang memiliki data
-                if ($pendapatan > 0 || $pengeluaran > 0) {
-                    $monthlyData[] = [
-                        'month' => $month,
-                        'month_name' => $this->monthNames[$month],
-                        'pendapatan' => $pendapatan,
-                        'pengeluaran' => $pengeluaran,
-                        'laba_rugi' => $labaRugi,
-                        'margin' => $margin,
-                    ];
-                }
-            }
-
-            Log::info('Generated monthly data', [
-                'year' => $year,
-                'count' => count($monthlyData)
-            ]);
-            return $monthlyData;
-        } catch (\Exception $e) {
-            Log::error('Error getting monthly data: ' . $e->getMessage(), [
-                'user_id' => Auth::id(),
-                'selectedYear' => $this->selectedYear,
-                'trace' => $e->getTraceAsString()
-            ]);
-            return [];
-        }
-    }
-
-    public function getGrowthRate(): ?float
+    public function getGrowthRateProperty()
     {
         try {
             if (!Auth::check() || empty($this->selectedYear) || !is_numeric($this->selectedYear)) {
@@ -391,44 +765,19 @@ class ProfitLoss extends Component
             $currentYear = (int) $this->selectedYear;
             $previousYear = $currentYear - 1;
 
-            // Query pendapatan tahun ini dan sebelumnya
-            $currentIncomeResult = DB::table('incomes')
-                ->where('user_id', Auth::id())
+            $currentIncome = Income::where('user_id', Auth::id())
                 ->whereYear('tanggal', $currentYear)
-                ->selectRaw('
-                    COALESCE(
-                        SUM(
-                            CAST(IFNULL(jumlah_terjual, 0) AS DECIMAL(15,2)) * 
-                            CAST(IFNULL(harga_satuan, 0) AS DECIMAL(15,2))
-                        ), 
-                        0
-                    ) as total
-                ')
-                ->first();
+                ->get()
+                ->sum(function ($income) {
+                    return ((float) ($income->jumlah_terjual ?? 0)) * ((float) ($income->harga_satuan ?? 0));
+                });
 
-            $previousIncomeResult = DB::table('incomes')
-                ->where('user_id', Auth::id())
+            $previousIncome = Income::where('user_id', Auth::id())
                 ->whereYear('tanggal', $previousYear)
-                ->selectRaw('
-                    COALESCE(
-                        SUM(
-                            CAST(IFNULL(jumlah_terjual, 0) AS DECIMAL(15,2)) * 
-                            CAST(IFNULL(harga_satuan, 0) AS DECIMAL(15,2))
-                        ), 
-                        0
-                    ) as total
-                ')
-                ->first();
-
-            $currentIncome = (float)($currentIncomeResult->total ?? 0);
-            $previousIncome = (float)($previousIncomeResult->total ?? 0);
-
-            Log::info('Growth rate calculation', [
-                'currentYear' => $currentYear,
-                'previousYear' => $previousYear,
-                'currentIncome' => $currentIncome,
-                'previousIncome' => $previousIncome
-            ]);
+                ->get()
+                ->sum(function ($income) {
+                    return ((float) ($income->jumlah_terjual ?? 0)) * ((float) ($income->harga_satuan ?? 0));
+                });
 
             if ($previousIncome > 0) {
                 return (($currentIncome - $previousIncome) / $previousIncome) * 100;
@@ -436,175 +785,21 @@ class ProfitLoss extends Component
 
             return null;
         } catch (\Exception $e) {
-            Log::error('Error calculating growth rate: ' . $e->getMessage(), [
-                'user_id' => Auth::id(),
-                'selectedYear' => $this->selectedYear,
-                'trace' => $e->getTraceAsString()
-            ]);
+            Log::error('Error calculating growth rate: ' . $e->getMessage());
             return null;
         }
     }
 
-    /**
-     * PERBAIKAN: Chart data dengan query builder langsung
-     */
-    public function getChartData(): array
-    {
-        try {
-            if (!Auth::check()) {
-                return [
-                    'labels' => [],
-                    'pendapatan' => [],
-                    'pengeluaran' => [],
-                    'profit' => []
-                ];
-            }
+    // ===============================
+    // UTILITY METHODS
+    // ===============================
 
-            if ($this->reportType === 'yearly' && !empty($this->selectedYear) && is_numeric($this->selectedYear)) {
-                return $this->getMonthlyChartData();
-            } elseif ($this->reportType === 'all' || ($this->reportType === 'yearly' && empty($this->selectedYear))) {
-                return $this->getYearlyChartData();
-            }
-
-            return [
-                'labels' => [],
-                'pendapatan' => [],
-                'pengeluaran' => [],
-                'profit' => []
-            ];
-
-        } catch (\Exception $e) {
-            Log::error('Error getting chart data: ' . $e->getMessage());
-            return [
-                'labels' => [],
-                'pendapatan' => [],
-                'pengeluaran' => [],
-                'profit' => []
-            ];
-        }
-    }
-
-    private function getMonthlyChartData(): array
-    {
-        $labels = [];
-        $pendapatanData = [];
-        $pengeluaranData = [];
-        $profitData = [];
-        $year = (int)$this->selectedYear;
-
-        for ($month = 1; $month <= 12; $month++) {
-            // Query pendapatan bulanan
-            $pendapatanResult = DB::table('incomes')
-                ->where('user_id', Auth::id())
-                ->whereYear('tanggal', $year)
-                ->whereMonth('tanggal', $month)
-                ->selectRaw('
-                    COALESCE(
-                        SUM(
-                            CAST(IFNULL(jumlah_terjual, 0) AS DECIMAL(15,2)) * 
-                            CAST(IFNULL(harga_satuan, 0) AS DECIMAL(15,2))
-                        ), 
-                        0
-                    ) as total
-                ')
-                ->first();
-
-            $pengeluaranResult = DB::table('expenditures')
-                ->where('user_id', Auth::id())
-                ->whereYear('tanggal', $year)
-                ->whereMonth('tanggal', $month)
-                ->selectRaw('
-                    COALESCE(
-                        SUM(CAST(IFNULL(jumlah, 0) AS DECIMAL(15,2))), 
-                        0
-                    ) as total
-                ')
-                ->first();
-
-            $pendapatan = (float)($pendapatanResult->total ?? 0);
-            $pengeluaran = (float)($pengeluaranResult->total ?? 0);
-            $profit = $pendapatan - $pengeluaran;
-
-            $labels[] = substr($this->monthNames[$month], 0, 3); // Jan, Feb, etc.
-            $pendapatanData[] = $pendapatan;
-            $pengeluaranData[] = $pengeluaran;
-            $profitData[] = $profit;
-        }
-
-        Log::info('Generated monthly chart data', [
-            'year' => $year,
-            'totalPendapatan' => array_sum($pendapatanData),
-            'totalPengeluaran' => array_sum($pengeluaranData)
-        ]);
-
-        return [
-            'labels' => $labels,
-            'pendapatan' => $pendapatanData,
-            'pengeluaran' => $pengeluaranData,
-            'profit' => $profitData
-        ];
-    }
-
-    private function getYearlyChartData(): array
-    {
-        $labels = [];
-        $pendapatanData = [];
-        $pengeluaranData = [];
-        $profitData = [];
-
-        $years = range(now()->year, max(2020, now()->year - 4)); // Last 5 years
-
-        foreach ($years as $year) {
-            // Query pendapatan tahunan
-            $pendapatanResult = DB::table('incomes')
-                ->where('user_id', Auth::id())
-                ->whereYear('tanggal', $year)
-                ->selectRaw('
-                    COALESCE(
-                        SUM(
-                            CAST(IFNULL(jumlah_terjual, 0) AS DECIMAL(15,2)) * 
-                            CAST(IFNULL(harga_satuan, 0) AS DECIMAL(15,2))
-                        ), 
-                        0
-                    ) as total
-                ')
-                ->first();
-
-            $pengeluaranResult = DB::table('expenditures')
-                ->where('user_id', Auth::id())
-                ->whereYear('tanggal', $year)
-                ->selectRaw('
-                    COALESCE(
-                        SUM(CAST(IFNULL(jumlah, 0) AS DECIMAL(15,2))), 
-                        0
-                    ) as total
-                ')
-                ->first();
-
-            $pendapatan = (float)($pendapatanResult->total ?? 0);
-            $pengeluaran = (float)($pengeluaranResult->total ?? 0);
-            $profit = $pendapatan - $pengeluaran;
-
-            $labels[] = (string)$year;
-            $pendapatanData[] = $pendapatan;
-            $pengeluaranData[] = $pengeluaran;
-            $profitData[] = $profit;
-        }
-
-        return [
-            'labels' => array_reverse($labels),
-            'pendapatan' => array_reverse($pendapatanData),
-            'pengeluaran' => array_reverse($pengeluaranData),
-            'profit' => array_reverse($profitData)
-        ];
-    }
-
-    public function exportData(): ?\Symfony\Component\HttpFoundation\StreamedResponse
+    public function exportCSV()
     {
         try {
             if (!Auth::check()) {
                 session()->flash('error', 'Anda harus login terlebih dahulu.');
-                return null;
+                return;
             }
 
             $data = [];
@@ -612,21 +807,22 @@ class ProfitLoss extends Component
             $headers = [];
 
             if ($this->reportType === 'yearly') {
-                $data = $this->getYearlyData();
+                $data = $this->yearlyData;
                 $fileName = 'laporan_rugi_laba_tahunan.csv';
                 $headers = ['Tahun', 'Pendapatan', 'Pengeluaran', 'Laba/Rugi', 'Margin (%)'];
             } elseif ($this->reportType === 'monthly' && !empty($this->selectedYear)) {
-                $data = $this->getMonthlyData();
-                $fileName = "laporan_rugi_laba_bulanan_{$this->selectedYear}.csv";
+                $data = $this->monthlyData;
+                $monthName = !empty($this->selectedMonth) ? $this->monthNames[(int)$this->selectedMonth] : 'Semua_Bulan';
+                $fileName = "laporan_rugi_laba_{$monthName}_{$this->selectedYear}.csv";
                 $headers = ['Bulan', 'Pendapatan', 'Pengeluaran', 'Laba/Rugi', 'Margin (%)'];
             } else {
                 session()->flash('error', 'Silakan pilih jenis laporan dan periode yang valid.');
-                return null;
+                return;
             }
 
             if (empty($data)) {
                 session()->flash('error', 'Tidak ada data untuk di-export.');
-                return null;
+                return;
             }
 
             $csvHeaders = [
@@ -637,20 +833,12 @@ class ProfitLoss extends Component
                 'Pragma' => 'public',
             ];
 
-            $callback = function() use ($data, $headers) {
+            $callback = function () use ($data, $headers) {
                 $file = fopen('php://output', 'w');
-                
-                if ($file === false) {
-                    return;
-                }
-                
-                // Add BOM untuk support Unicode di Excel
-                fprintf($file, chr(0xEF).chr(0xBB).chr(0xBF));
 
-                // Header kolom
+                fprintf($file, chr(0xEF) . chr(0xBB) . chr(0xBF));
                 fputcsv($file, $headers, ';');
 
-                // Data rows
                 foreach ($data as $row) {
                     if ($this->reportType === 'yearly') {
                         fputcsv($file, [
@@ -675,256 +863,115 @@ class ProfitLoss extends Component
             };
 
             return response()->stream($callback, 200, $csvHeaders);
-
         } catch (\Exception $e) {
-            Log::error('Error in exportData: ' . $e->getMessage(), [
-                'user_id' => Auth::id(),
-                'reportType' => $this->reportType,
-                'trace' => $e->getTraceAsString()
-            ]);
+            Log::error('Error in exportCSV: ' . $e->getMessage());
             session()->flash('error', 'Terjadi kesalahan saat export data.');
-            return null;
         }
     }
 
-    /**
-     * PERBAIKAN: Available years dengan query builder langsung
-     */
-    public function getAvailableYears(): array
+    public function getAvailableYears()
     {
         try {
             if (!Auth::check()) {
-                return [];
+                return [now()->year];
             }
 
-            // Query untuk mendapatkan tahun yang tersedia dari kedua tabel
-            $incomeYears = DB::table('incomes')
-                ->where('user_id', Auth::id())
-                ->selectRaw('DISTINCT YEAR(tanggal) as year')
+            $incomeYears = Income::where('user_id', Auth::id())
                 ->whereNotNull('tanggal')
+                ->selectRaw('DISTINCT YEAR(tanggal) as year')
                 ->pluck('year')
                 ->toArray();
 
-            $expenditureYears = DB::table('expenditures')
-                ->where('user_id', Auth::id())
-                ->selectRaw('DISTINCT YEAR(tanggal) as year')
+            $expenditureYears = Expenditure::where('user_id', Auth::id())
                 ->whereNotNull('tanggal')
+                ->selectRaw('DISTINCT YEAR(tanggal) as year')
                 ->pluck('year')
                 ->toArray();
 
             $allYears = array_unique(array_merge($incomeYears, $expenditureYears));
-            rsort($allYears); // Sort descending
+            rsort($allYears);
 
-            Log::info('Available years', ['years' => $allYears]);
-            return $allYears;
+            return $allYears ?: [now()->year];
         } catch (\Exception $e) {
-            Log::error('Error getting available years: ' . $e->getMessage(), [
-                'user_id' => Auth::id(),
-                'trace' => $e->getTraceAsString()
-            ]);
+            Log::error('Error getting available years: ' . $e->getMessage());
             return [now()->year];
         }
     }
 
-    public function getIsMonthSelected(): bool
+    public function getSelectedMonthNameProperty()
     {
-        return $this->reportType === 'monthly' && 
-               !empty($this->selectedYear) && 
-               $this->hasValidMonthSelection();
+        return isset($this->monthNames[(int) $this->selectedMonth])
+            ? $this->monthNames[(int) $this->selectedMonth]
+            : '';
     }
 
-    public function getSelectedMonthName(): string
+    public function getIsMonthSelectedProperty()
     {
-        if ($this->hasValidMonthSelection()) {
-            return $this->monthNames[(int)$this->selectedMonth] ?? 'Bulan';
-        }
-        return 'Bulan';
+        return $this->reportType === 'monthly' &&
+            !empty($this->selectedYear) &&
+            !empty($this->selectedMonth) &&
+            is_numeric($this->selectedMonth) &&
+            (int)$this->selectedMonth >= 1 &&
+            (int)$this->selectedMonth <= 12;
     }
 
-    /**
-     * PERBAIKAN UTAMA: Render method yang lebih robust dengan error handling
-     */
     public function render()
     {
         try {
-            Log::info('Render method called', [
+            if (!Auth::check()) {
+                session()->flash('error', 'Anda harus login terlebih dahulu.');
+                return $this->getDefaultViewData();
+            }
+
+            return view('livewire.reports.profit-loss', [
+                'totalPendapatan' => $this->totalPendapatan,
+                'totalPengeluaran' => $this->totalPengeluaran,
+                'labaRugi' => $this->labaRugi,
+                'marginProfit' => $this->marginProfit,
+                'growthRate' => $this->growthRate,
+                'yearlyData' => $this->yearlyData,
+                'monthlyData' => $this->monthlyData,
+                'dailyData' => $this->dailyData,
+                'chartData' => $this->chartData,
+                'hasValidChartData' => $this->hasValidChartData,
+                'availableYears' => $this->getAvailableYears(),
+                'monthNames' => $this->monthNames,
+                'isMonthSelected' => $this->isMonthSelected,
+                'selectedMonthName' => $this->selectedMonthName,
                 'reportType' => $this->reportType,
                 'selectedYear' => $this->selectedYear,
                 'selectedMonth' => $this->selectedMonth,
-                'user_id' => Auth::id()
+                'showDetails' => $this->showDetails,
             ]);
 
-            // PERBAIKAN: Pastikan user login sebelum proses apapun
-            if (!Auth::check()) {
-                Log::warning('User not authenticated in render');
-                return view('livewire.reports.profit-loss', [
-                    'totalPendapatan' => 0.0,
-                    'totalPengeluaran' => 0.0,
-                    'labaRugi' => 0.0,
-                    'marginProfit' => 0.0,
-                    'growthRate' => null,
-                    'yearlyData' => [],
-                    'monthlyData' => [],
-                    'availableYears' => [now()->year],
-                    'monthNames' => $this->monthNames,
-                    'isMonthSelected' => false,
-                    'selectedMonthName' => 'Bulan',
-                    'chartData' => [
-                        'labels' => [],
-                        'pendapatan' => [],
-                        'pengeluaran' => [],
-                        'profit' => []
-                    ],
-                ]);
-            }
-
-            // Ambil data dengan safe method calls
-            $totalPendapatan = $this->getTotalPendapatan();
-            $totalPengeluaran = $this->getTotalPengeluaran();
-            $labaRugi = $totalPendapatan - $totalPengeluaran; // Hitung langsung di sini untuk memastikan
-            $marginProfit = $this->getMarginProfit();
-            
-            // Data yang lebih kompleks dengan error handling
-            $growthRate = null;
-            $yearlyData = [];
-            $monthlyData = [];
-            $chartData = [
-                'labels' => [],
-                'pendapatan' => [],
-                'pengeluaran' => [],
-                'profit' => []
-            ];
-
-            try {
-                $growthRate = $this->getGrowthRate();
-            } catch (\Exception $e) {
-                Log::error('Error getting growth rate in render: ' . $e->getMessage());
-                $growthRate = null;
-            }
-
-            try {
-                $yearlyData = $this->getYearlyData();
-            } catch (\Exception $e) {
-                Log::error('Error getting yearly data in render: ' . $e->getMessage());
-                $yearlyData = [];
-            }
-
-            try {
-                $monthlyData = $this->getMonthlyData();
-            } catch (\Exception $e) {
-                Log::error('Error getting monthly data in render: ' . $e->getMessage());
-                $monthlyData = [];
-            }
-
-            try {
-                $chartData = $this->getChartData();
-            } catch (\Exception $e) {
-                Log::error('Error getting chart data in render: ' . $e->getMessage());
-                $chartData = [
-                    'labels' => [],
-                    'pendapatan' => [],
-                    'pengeluaran' => [],
-                    'profit' => []
-                ];
-            }
-
-            $availableYears = [];
-            try {
-                $availableYears = $this->getAvailableYears();
-            } catch (\Exception $e) {
-                Log::error('Error getting available years in render: ' . $e->getMessage());
-                $availableYears = [now()->year];
-            }
-
-            Log::info('Render data prepared successfully', [
-                'totalPendapatan' => $totalPendapatan,
-                'totalPengeluaran' => $totalPengeluaran,
-                'labaRugi' => $labaRugi,
-                'yearlyDataCount' => count($yearlyData),
-                'monthlyDataCount' => count($monthlyData),
-                'availableYearsCount' => count($availableYears)
-            ]);
-
-            return view('livewire.reports.profit-loss', [
-                'totalPendapatan' => $totalPendapatan,
-                'totalPengeluaran' => $totalPengeluaran,
-                'labaRugi' => $labaRugi,
-                'marginProfit' => $marginProfit,
-                'growthRate' => $growthRate,
-                'yearlyData' => $yearlyData,
-                'monthlyData' => $monthlyData,
-                'availableYears' => $availableYears,
-                'monthNames' => $this->monthNames,
-                'isMonthSelected' => $this->getIsMonthSelected(),
-                'selectedMonthName' => $this->getSelectedMonthName(),
-                'chartData' => $chartData,
-            ]);
         } catch (\Exception $e) {
-            Log::error('Critical error in render method: ' . $e->getMessage(), [
-                'user_id' => Auth::id(),
-                'trace' => $e->getTraceAsString()
-            ]);
-            
-            // PERBAIKAN: Return view dengan data kosong tapi aman ketika error
-            return view('livewire.reports.profit-loss', [
-                'totalPendapatan' => 0.0,
-                'totalPengeluaran' => 0.0,
-                'labaRugi' => 0.0,
-                'marginProfit' => 0.0,
-                'growthRate' => null,
-                'yearlyData' => [],
-                'monthlyData' => [],
-                'availableYears' => [now()->year],
-                'monthNames' => $this->monthNames,
-                'isMonthSelected' => false,
-                'selectedMonthName' => 'Bulan',
-                'chartData' => [
-                    'labels' => [],
-                    'pendapatan' => [],
-                    'pengeluaran' => [],
-                    'profit' => []
-                ],
-            ]);
+            Log::error('CRITICAL ERROR in render: ' . $e->getMessage());
+            session()->flash('error', 'Terjadi kesalahan sistem. Silakan refresh halaman.');
+            return $this->getDefaultViewData();
         }
     }
 
-    // Method untuk debugging - bisa dipanggil dari view untuk testing
-    public function debugData()
+    private function getDefaultViewData()
     {
-        if (!Auth::check()) {
-            session()->flash('error', 'User not authenticated');
-            return;
-        }
-
-        // Debug info untuk troubleshooting
-        $debugInfo = [
-            'user_id' => Auth::id(),
+        return view('livewire.reports.profit-loss', [
+            'totalPendapatan' => 0.0,
+            'totalPengeluaran' => 0.0,
+            'labaRugi' => 0.0,
+            'marginProfit' => 0.0,
+            'growthRate' => null,
+            'yearlyData' => [],
+            'monthlyData' => [],
+            'dailyData' => [],
+            'chartData' => $this->getEmptyChartData(),
+            'hasValidChartData' => false,
+            'availableYears' => [now()->year],
+            'monthNames' => $this->monthNames,
+            'isMonthSelected' => false,
+            'selectedMonthName' => '',
             'reportType' => $this->reportType,
             'selectedYear' => $this->selectedYear,
             'selectedMonth' => $this->selectedMonth,
-            'total_income_records' => DB::table('incomes')->where('user_id', Auth::id())->count(),
-            'total_expenditure_records' => DB::table('expenditures')->where('user_id', Auth::id())->count(),
-        ];
-
-        // Ambil sample data
-        $sampleIncome = DB::table('incomes')
-            ->where('user_id', Auth::id())
-            ->take(3)
-            ->get(['id', 'tanggal', 'produk', 'jumlah_terjual', 'harga_satuan'])
-            ->toArray();
-
-        $sampleExpenditure = DB::table('expenditures')
-            ->where('user_id', Auth::id())
-            ->take(3)
-            ->get(['id', 'tanggal', 'nama_pengeluaran', 'jumlah'])
-            ->toArray();
-
-        Log::info('Debug Data', [
-            'debugInfo' => $debugInfo,
-            'sampleIncome' => $sampleIncome,
-            'sampleExpenditure' => $sampleExpenditure
+            'showDetails' => $this->showDetails,
         ]);
-
-        session()->flash('message', 'Debug info telah ditulis ke log. Check storage/logs/laravel.log');
     }
 }

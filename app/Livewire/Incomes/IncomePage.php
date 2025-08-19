@@ -352,10 +352,23 @@ class IncomePage extends Component
 
             if ($this->isEdit && $this->income_id) {
                 $income = Income::where('user_id', Auth::id())->findOrFail($this->income_id);
-                $income->update($data);
+                $income->user_id = $data['user_id'];
+                $income->tanggal = $data['tanggal'];
+                $income->produk = $data['produk'];
+                $income->jumlah_terjual = $data['jumlah_terjual'];
+                $income->harga_satuan = $data['harga_satuan'];
+                $income->save();
+
                 session()->flash('message', 'Data berhasil diperbarui!');
             } else {
-                Income::create($data);
+                $income = new Income;
+                $income->user_id = $data['user_id'];
+                $income->tanggal = $data['tanggal'];
+                $income->produk = $data['produk'];
+                $income->jumlah_terjual = $data['jumlah_terjual'];
+                $income->harga_satuan = $data['harga_satuan'];
+                $income->save();
+
                 session()->flash('message', 'Data berhasil ditambahkan!');
             }
 

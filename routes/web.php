@@ -8,6 +8,7 @@ use App\Livewire\Capitals\ModalPage;
 use App\Livewire\Expenditures\ExpenditurePage;
 use App\Livewire\Capitals\FixedCostPage;
 use App\Livewire\Incomes\IncomePage;
+use App\Livewire\ProfitLoss as LivewireProfitLoss;
 use App\Livewire\Reports\IrrPage;
 use App\Livewire\Reports\ProfitLoss;
 use App\Livewire\Reports\ReportbulananList;

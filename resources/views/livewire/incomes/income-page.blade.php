@@ -20,22 +20,32 @@
                 <div class="row mt-3">
                     <div class="col-md-3">
                         <label for="filterMonth" class="form-label">Pilih Bulan</label>
-                        <select wire:model.live="filterMonth" class="form-select @error('filterMonth') is-invalid @enderror">
+                        <select wire:model.live="filterMonth"
+                            class="form-select @error('filterMonth') is-invalid @enderror">
                             <option value="">-- Pilih Bulan --</option>
-                            @foreach($monthNames as $key => $name)
+                            @foreach ($monthNames as $key => $name)
                                 <option value="{{ $key }}">{{ $name }}</option>
                             @endforeach
                         </select>
                     </div>
                     <div class="col-md-3">
                         <label for="filterYear" class="form-label">Pilih Tahun</label>
-                        <select wire:model.live="filterYear" class="form-select @error('filterYear') is-invalid @enderror">
-                            <option value="">-- Pilih Tahun --</option>
-                            @foreach($this->getAvailableYears() as $year)
-                                <option value="{{ $year }}">{{ $year }}</option>
+
+                        <input list="yearOptions" type="number" wire:model.live="filterYear"
+                            class="form-control @error('filterYear') is-invalid @enderror"
+                            placeholder="Masukkan atau pilih tahun" min="1900" max="{{ date('Y') + 10 }}">
+
+                        <datalist id="yearOptions">
+                            @foreach ($this->getAvailableYears() as $year)
+                                <option value="{{ $year }}"></option>
                             @endforeach
-                        </select>
+                        </datalist>
+
+                        @error('filterYear')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
                     </div>
+
                     @if ($filterMonth && $filterYear)
                         <div class="col-md-3 d-flex align-items-end">
                             <button class="btn btn-secondary" wire:click="clearFilters">
@@ -51,7 +61,7 @@
                 </div>
 
                 {{-- Informasi Summary --}}
-                @if(count($monthlyTotals) > 0)
+                @if (count($monthlyTotals) > 0)
                     <div class="row mt-4">
                         <div class="col-12">
                             <div class="card bg-light">
@@ -65,47 +75,52 @@
                                             $displayedCount = 0;
                                             $maxDisplay = 6;
                                         @endphp
-                                        @foreach(array_slice($monthlyTotals, 0, 6) as $period => $total)
+                                        @foreach (array_slice($monthlyTotals, 0, 6) as $period => $total)
                                             @php
                                                 // Perbaikan: Validasi yang lebih aman
                                                 if (!is_string($period) || empty($period)) {
                                                     continue;
                                                 }
-                                                
+
                                                 $periodParts = explode('-', $period);
                                                 if (count($periodParts) !== 2) {
                                                     continue;
                                                 }
-                                                
+
                                                 $year = (int) $periodParts[0];
                                                 $month = (int) $periodParts[1];
-                                                
+
                                                 if ($month < 1 || $month > 12 || $year < 1900 || $year > 2100) {
                                                     continue;
                                                 }
-                                                
+
                                                 // Perbaikan: Akses array yang aman
                                                 $monthName = $monthNames[$month] ?? 'Unknown';
-                                                
+
                                                 $isSelected = $filterMonth == $month && $filterYear == $year;
                                                 $total = is_numeric($total) ? (float) $total : 0;
                                                 $displayedCount++;
                                             @endphp
                                             <div class="col-lg-2 col-md-4 col-sm-6 col-6 mb-3">
-                                                <div class="card {{ $isSelected ? 'border-success bg-success text-white shadow' : 'border-light' }} h-100">
+                                                <div
+                                                    class="card {{ $isSelected ? 'border-success bg-success text-white shadow' : 'border-light' }} h-100">
                                                     <div class="card-body text-center p-3">
                                                         <div class="mb-2">
-                                                            <small class="{{ $isSelected ? 'text-white-50' : 'text-muted' }}">
+                                                            <small
+                                                                class="{{ $isSelected ? 'text-white-50' : 'text-muted' }}">
                                                                 {{ $monthName }} {{ $year }}
                                                             </small>
                                                         </div>
                                                         <div class="fw-bold">
                                                             @if ($total >= 1000000)
-                                                                <span class="fs-6">Rp {{ number_format($total / 1000000, 1, ',', '.') }}Jt</span>
+                                                                <span class="fs-6">Rp
+                                                                    {{ number_format($total / 1000000, 1, ',', '.') }}Jt</span>
                                                             @elseif ($total >= 1000)
-                                                                <span class="fs-6">Rp {{ number_format($total / 1000, 0, ',', '.') }}Rb</span>
+                                                                <span class="fs-6">Rp
+                                                                    {{ number_format($total / 1000, 0, ',', '.') }}Rb</span>
                                                             @else
-                                                                <span class="small">Rp {{ number_format($total, 0, ',', '.') }}</span>
+                                                                <span class="small">Rp
+                                                                    {{ number_format($total, 0, ',', '.') }}</span>
                                                             @endif
                                                         </div>
                                                         @if ($isSelected)
@@ -122,7 +137,8 @@
                                                 <div class="alert alert-info mb-0">
                                                     <div class="row align-items-center">
                                                         <div class="col-md-6">
-                                                            <strong><i class="bi bi-info-circle"></i> Total Keseluruhan Pendapatan:</strong>
+                                                            <strong><i class="bi bi-info-circle"></i> Total Keseluruhan
+                                                                Pendapatan:</strong>
                                                         </div>
                                                         <div class="col-md-6 text-md-end">
                                                             @php
@@ -167,7 +183,8 @@
                             {{-- Dropdown untuk memilih jumlah data per halaman --}}
                             <div class="d-flex align-items-center">
                                 <label class="form-label mb-0 me-2">Tampilkan:</label>
-                                <select wire:model.live="perPage" class="form-select form-select-sm" style="width: auto;">
+                                <select wire:model.live="perPage" class="form-select form-select-sm"
+                                    style="width: auto;">
                                     <option value="5">5</option>
                                     <option value="10">10</option>
                                     <option value="25">25</option>
@@ -197,16 +214,18 @@
                                 </thead>
                                 <tbody>
                                     @foreach ($paginatedIncomes as $income)
-                                        @if($income)
+                                        @if ($income)
                                             <tr>
-                                                <td>{{ ($paginatedIncomes->currentPage() - 1) * $paginatedIncomes->perPage() + $loop->iteration }}</td>
+                                                <td>{{ ($paginatedIncomes->currentPage() - 1) * $paginatedIncomes->perPage() + $loop->iteration }}
+                                                </td>
                                                 <td>
                                                     <span class="badge bg-secondary">
                                                         {{ \Carbon\Carbon::parse($income->tanggal)->format('d/m/Y') }}
                                                     </span>
                                                 </td>
                                                 <td>
-                                                    <div class="text-truncate" style="max-width: 200px;" title="{{ $income->produk ?? '' }}">
+                                                    <div class="text-truncate" style="max-width: 200px;"
+                                                        title="{{ $income->produk ?? '' }}">
                                                         {{ $income->produk ?? '' }}
                                                     </div>
                                                 </td>
@@ -222,15 +241,20 @@
                                                 </td>
                                                 <td>
                                                     <span class="badge bg-success fs-6">
-                                                        Rp {{ number_format(($income->jumlah_terjual ?? 0) * ($income->harga_satuan ?? 0), 0, ',', '.') }}
+                                                        Rp
+                                                        {{ number_format(($income->jumlah_terjual ?? 0) * ($income->harga_satuan ?? 0), 0, ',', '.') }}
                                                     </span>
                                                 </td>
                                                 <td>
                                                     <div class="btn-group" role="group">
-                                                        <button class="btn btn-sm btn-warning" wire:click="edit({{ $income->id }})" title="Edit Data">
+                                                        <button class="btn btn-sm btn-warning"
+                                                            wire:click="edit({{ $income->id }})" title="Edit Data">
                                                             <i class="bi bi-pencil"></i>
                                                         </button>
-                                                        <button class="btn btn-sm btn-danger" wire:click="confirmDelete({{ $income->id }})" wire:confirm="Apakah Anda yakin ingin menghapus data '{{ \Illuminate\Support\Str::limit($income->produk ?? '', 30) }}'?" title="Hapus Data">
+                                                        <button class="btn btn-sm btn-danger"
+                                                            wire:click="confirmDelete({{ $income->id }})"
+                                                            wire:confirm="Apakah Anda yakin ingin menghapus data '{{ \Illuminate\Support\Str::limit($income->produk ?? '', 30) }}'?"
+                                                            title="Hapus Data">
                                                             <i class="bi bi-trash"></i>
                                                         </button>
                                                     </div>
@@ -241,7 +265,8 @@
                                 </tbody>
                                 <tfoot class="table-dark">
                                     <tr>
-                                        <th colspan="5" class="text-end">Total Pendapatan {{ $this->monthName }} {{ $filterYear }}:</th>
+                                        <th colspan="5" class="text-end">Total Pendapatan {{ $this->monthName }}
+                                            {{ $filterYear }}:</th>
                                         <th>
                                             <span class="badge bg-success fs-6">
                                                 Rp {{ number_format($jumlah, 0, ',', '.') }}
@@ -262,7 +287,7 @@
                                     dari {{ $paginatedIncomes->total() ?? 0 }} data
                                 </small>
                             </div>
-                            
+
                             {{-- Custom Pagination Links --}}
                             @if ($paginatedIncomes->hasPages())
                                 <nav aria-label="Pagination Navigation">
@@ -290,7 +315,8 @@
                                                 </li>
                                             @else
                                                 <li class="page-item">
-                                                    <button class="page-link" wire:click="gotoPage({{ $page }})">
+                                                    <button class="page-link"
+                                                        wire:click="gotoPage({{ $page }})">
                                                         {{ $page }}
                                                     </button>
                                                 </li>
@@ -322,7 +348,8 @@
                                 <div>
                                     <h6 class="mb-1">Belum Ada Data</h6>
                                     <p class="mb-0">
-                                        Belum ada data pendapatan untuk bulan <strong>{{ $this->monthName }} {{ $filterYear }}</strong>.
+                                        Belum ada data pendapatan untuk bulan <strong>{{ $this->monthName }}
+                                            {{ $filterYear }}</strong>.
                                         <br>Klik tombol "Tambah Data" untuk menambahkan data pendapatan baru.
                                     </p>
                                 </div>
@@ -336,7 +363,8 @@
                             <div>
                                 <h6 class="mb-1">Pilih Periode</h6>
                                 <p class="mb-0">
-                                    <strong>Silakan pilih bulan dan tahun terlebih dahulu</strong> untuk melihat dan menambahkan data pendapatan.
+                                    <strong>Silakan pilih bulan dan tahun terlebih dahulu</strong> untuk melihat dan
+                                    menambahkan data pendapatan.
                                 </p>
                             </div>
                         </div>
@@ -356,16 +384,21 @@
                         <div class="modal-header bg-success text-white">
                             <h5 class="modal-title">
                                 <i class="bi bi-{{ $isEdit ? 'pencil' : 'plus-circle' }}"></i>
-                                {{ $isEdit ? 'Edit' : 'Tambah' }} Pendapatan - {{ $this->monthName }} {{ $filterYear }}
+                                {{ $isEdit ? 'Edit' : 'Tambah' }} Pendapatan - {{ $this->monthName }}
+                                {{ $filterYear }}
                             </h5>
-                            <button type="button" class="btn-close btn-close-white" wire:click="closeModal"></button>
+                            <button type="button" class="btn-close btn-close-white"
+                                wire:click="closeModal"></button>
                         </div>
                         <div class="modal-body">
                             <div class="row">
                                 <div class="col-md-6">
                                     <div class="mb-3">
                                         <label class="form-label">Tanggal <span class="text-danger">*</span></label>
-                                        <input type="date" class="form-control @error('tanggal') is-invalid @enderror" wire:model.live="tanggal" min="{{ $this->minDate }}" max="{{ $this->maxDate }}">
+                                        <input type="date"
+                                            class="form-control @error('tanggal') is-invalid @enderror"
+                                            wire:model.live="tanggal" min="{{ $this->minDate }}"
+                                            max="{{ $this->maxDate }}">
                                         @error('tanggal')
                                             <div class="invalid-feedback">{{ $message }}</div>
                                         @enderror
@@ -376,8 +409,12 @@
                                 </div>
                                 <div class="col-md-6">
                                     <div class="mb-3">
-                                        <label class="form-label">Produk/Jasa <span class="text-danger">*</span></label>
-                                        <input type="text" class="form-control @error('produk') is-invalid @enderror" wire:model.live="produk" placeholder="Masukkan nama produk atau jasa" maxlength="255">
+                                        <label class="form-label">Produk/Jasa <span
+                                                class="text-danger">*</span></label>
+                                        <input type="text"
+                                            class="form-control @error('produk') is-invalid @enderror"
+                                            wire:model.live="produk" placeholder="Masukkan nama produk atau jasa"
+                                            maxlength="255">
                                         @error('produk')
                                             <div class="invalid-feedback">{{ $message }}</div>
                                         @enderror
@@ -387,8 +424,11 @@
                             <div class="row">
                                 <div class="col-md-6">
                                     <div class="mb-3">
-                                        <label class="form-label">Jumlah Terjual <span class="text-danger">*</span></label>
-                                        <input type="number" class="form-control @error('jumlah_terjual') is-invalid @enderror" wire:model.live="jumlah_terjual" min="1" placeholder="0">
+                                        <label class="form-label">Jumlah Terjual <span
+                                                class="text-danger">*</span></label>
+                                        <input type="number"
+                                            class="form-control @error('jumlah_terjual') is-invalid @enderror"
+                                            wire:model.live="jumlah_terjual" min="1" placeholder="0">
                                         @error('jumlah_terjual')
                                             <div class="invalid-feedback">{{ $message }}</div>
                                         @enderror
@@ -396,10 +436,14 @@
                                 </div>
                                 <div class="col-md-6">
                                     <div class="mb-3">
-                                        <label class="form-label">Harga Satuan <span class="text-danger">*</span></label>
+                                        <label class="form-label">Harga Satuan <span
+                                                class="text-danger">*</span></label>
                                         <div class="input-group">
                                             <span class="input-group-text bg-success text-white">Rp</span>
-                                            <input type="number" class="form-control @error('harga_satuan') is-invalid @enderror" wire:model.live="harga_satuan" min="0" step="0.01" placeholder="0">
+                                            <input type="number"
+                                                class="form-control @error('harga_satuan') is-invalid @enderror"
+                                                wire:model.live="harga_satuan" min="0" step="0.01"
+                                                placeholder="0">
                                             @error('harga_satuan')
                                                 <div class="invalid-feedback">{{ $message }}</div>
                                             @enderror
@@ -427,12 +471,14 @@
                                             <div class="col-md-3">
                                                 <strong>Total:</strong><br>
                                                 <span class="badge bg-success">
-                                                    Rp {{ number_format($jumlah_terjual * $harga_satuan, 0, ',', '.') }}
+                                                    Rp
+                                                    {{ number_format($jumlah_terjual * $harga_satuan, 0, ',', '.') }}
                                                 </span>
                                             </div>
                                             <div class="col-md-3">
                                                 <strong>Produk:</strong><br>
-                                                <span class="text-muted">{{ \Illuminate\Support\Str::limit($produk ?? '', 20) }}</span>
+                                                <span
+                                                    class="text-muted">{{ \Illuminate\Support\Str::limit($produk ?? '', 20) }}</span>
                                             </div>
                                         </div>
                                     </div>
@@ -451,18 +497,21 @@
                                             </div>
                                             <div class="col-md-3">
                                                 <strong>Produk/Jasa:</strong><br>
-                                                <span class="text-muted">{{ \Illuminate\Support\Str::limit($produk ?? '', 15) }}</span>
+                                                <span
+                                                    class="text-muted">{{ \Illuminate\Support\Str::limit($produk ?? '', 15) }}</span>
                                             </div>
                                             <div class="col-md-3">
                                                 <strong>Qty x Harga:</strong><br>
                                                 <span class="badge bg-info">
-                                                    {{ number_format($jumlah_terjual, 0, ',', '.') }} x Rp {{ number_format($harga_satuan, 0, ',', '.') }}
+                                                    {{ number_format($jumlah_terjual, 0, ',', '.') }} x Rp
+                                                    {{ number_format($harga_satuan, 0, ',', '.') }}
                                                 </span>
                                             </div>
                                             <div class="col-md-3">
                                                 <strong>Total Pendapatan:</strong><br>
                                                 <span class="badge bg-success">
-                                                    Rp {{ number_format($jumlah_terjual * $harga_satuan, 0, ',', '.') }}
+                                                    Rp
+                                                    {{ number_format($jumlah_terjual * $harga_satuan, 0, ',', '.') }}
                                                 </span>
                                             </div>
                                         </div>
@@ -492,7 +541,8 @@
     @endif
 
     {{-- Loading Overlay --}}
-    <div wire:loading.delay class="position-fixed top-0 start-0 w-100 h-100" style="background-color: rgba(255,255,255,0.8); z-index: 9998;">
+    <div wire:loading.delay class="position-fixed top-0 start-0 w-100 h-100"
+        style="background-color: rgba(255,255,255,0.8); z-index: 9998;">
         <div class="position-absolute top-50 start-50 translate-middle">
             <div class="text-center">
                 <div class="spinner-border text-success mb-2" role="status" style="width: 3rem; height: 3rem;">
@@ -505,7 +555,8 @@
 
     {{-- Success Alert --}}
     @if (session()->has('message'))
-        <div class="alert alert-success alert-dismissible fade show position-fixed" style="top: 20px; right: 20px; z-index: 9999; min-width: 300px;">
+        <div class="alert alert-success alert-dismissible fade show position-fixed"
+            style="top: 20px; right: 20px; z-index: 9999; min-width: 300px;">
             <i class="bi bi-check-circle me-2"></i>
             {{ session('message') }}
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
@@ -514,7 +565,8 @@
 
     {{-- Error Alert --}}
     @if (session()->has('error'))
-        <div class="alert alert-danger alert-dismissible fade show position-fixed" style="top: 20px; right: 20px; z-index: 9999; min-width: 300px;">
+        <div class="alert alert-danger alert-dismissible fade show position-fixed"
+            style="top: 20px; right: 20px; z-index: 9999; min-width: 300px;">
             <i class="bi bi-exclamation-circle me-2"></i>
             {{ session('error') }}
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>

@@ -30,14 +30,22 @@
                     </div>
                     <div class="col-md-3">
                         <label for="filterYear" class="form-label">Pilih Tahun</label>
-                        <select wire:model.live="filterYear"
-                            class="form-select @error('filterYear') is-invalid @enderror">
-                            <option value="">-- Pilih Tahun --</option>
+
+                        <input list="yearOptions" type="number" wire:model.live="filterYear"
+                            class="form-control @error('filterYear') is-invalid @enderror"
+                            placeholder="Masukkan atau pilih tahun" min="1900" max="{{ date('Y') + 10 }}">
+
+                        <datalist id="yearOptions">
                             @foreach ($this->getAvailableYears() as $year)
-                                <option value="{{ $year }}">{{ $year }}</option>
+                                <option value="{{ $year }}"></option>
                             @endforeach
-                        </select>
+                        </datalist>
+
+                        @error('filterYear')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
                     </div>
+
                     @if ($filterMonth && $filterYear)
                         <div class="col-md-3 d-flex align-items-end">
                             <button class="btn btn-secondary" wire:click="clearFilters">
@@ -58,31 +66,114 @@
                         <div class="col-12">
                             <div class="card bg-light">
                                 <div class="card-body">
-                                    <h6 class="card-title"><i class="bi bi-graph-up"></i> Ringkasan Pengeluaran</h6>
+                                    <h6 class="card-title">
+                                        <i class="bi bi-graph-up"></i> Ringkasan Pengeluaran
+                                        @if ($filterYear)
+                                            <small class="text-muted">(Tahun {{ $filterYear }})</small>
+                                        @else
+                                            <small class="text-muted">(6 Bulan Terakhir)</small>
+                                        @endif
+                                    </h6>
                                     <div class="row">
+                                        @php
+                                            $displayedCount = 0;
+                                            $maxDisplay = 6;
+                                        @endphp
                                         @foreach (array_slice($monthlyTotals, 0, 6) as $period => $total)
                                             @php
-                                                [$year, $month] = explode('-', $period);
-                                                $monthName = $monthNames[intval($month)] ?? '';
+                                                // Perbaikan: Validasi yang lebih aman
+                                                if (!is_string($period) || empty($period)) {
+                                                    continue;
+                                                }
+
+                                                $periodParts = explode('-', $period);
+                                                if (count($periodParts) !== 2) {
+                                                    continue;
+                                                }
+
+                                                $year = (int) $periodParts[0];
+                                                $month = (int) $periodParts[1];
+
+                                                if ($month < 1 || $month > 12 || $year < 1900 || $year > 2100) {
+                                                    continue;
+                                                }
+
+                                                // Perbaikan: Akses array yang aman
+                                                $monthName = $monthNames[$month] ?? 'Unknown';
+
                                                 $isSelected = $filterMonth == $month && $filterYear == $year;
+                                                $total = is_numeric($total) ? (float) $total : 0;
+                                                $displayedCount++;
                                             @endphp
-                                            <div class="col-md-2 col-sm-4 col-6 mb-2">
+                                            <div class="col-lg-2 col-md-4 col-sm-6 col-6 mb-3">
                                                 <div
-                                                    class="card {{ $isSelected ? 'border-primary bg-primary-subtle' : '' }}">
-                                                    <div class="card-body text-center p-2">
-                                                        <small class="text-muted">{{ $monthName }}
-                                                            {{ $year }}</small>
-                                                        <div class="fw-bold small">
-                                                            Rp {{ number_format($total, 0, ',', '.') }}
+                                                    class="card {{ $isSelected ? 'border-danger bg-danger text-white shadow' : 'border-light' }} h-100">
+                                                    <div class="card-body text-center p-3">
+                                                        <div class="mb-2">
+                                                            <small
+                                                                class="{{ $isSelected ? 'text-white-50' : 'text-muted' }}">
+                                                                {{ $monthName }} {{ $year }}
+                                                            </small>
                                                         </div>
+                                                        <div class="fw-bold">
+                                                            @if ($total >= 1000000)
+                                                                <span class="fs-6">Rp
+                                                                    {{ number_format($total / 1000000, 1, ',', '.') }}Jt</span>
+                                                            @elseif ($total >= 1000)
+                                                                <span class="fs-6">Rp
+                                                                    {{ number_format($total / 1000, 0, ',', '.') }}Rb</span>
+                                                            @else
+                                                                <span class="small">Rp
+                                                                    {{ number_format($total, 0, ',', '.') }}</span>
+                                                            @endif
+                                                        </div>
+                                                        @if ($isSelected)
+                                                            <small class="text-white-50">
+                                                                <i class="bi bi-check-circle"></i> Dipilih
+                                                            </small>
+                                                        @endif
                                                     </div>
                                                 </div>
                                             </div>
                                         @endforeach
+                                        @if (count($monthlyTotals) > 0)
+                                            <div class="col-12 mt-3">
+                                                <div class="alert alert-info mb-0">
+                                                    <div class="row align-items-center">
+                                                        <div class="col-md-6">
+                                                            <strong><i class="bi bi-info-circle"></i> Total Keseluruhan Pengeluaran
+                                                                @if ($filterYear)
+                                                                    Tahun {{ $filterYear }}:
+                                                                @else
+                                                                    :
+                                                                @endif
+                                                            </strong>
+                                                        </div>
+                                                        <div class="col-md-6 text-md-end">
+                                                            @php
+                                                                $grandTotal = 0;
+                                                                foreach ($monthlyTotals as $value) {
+                                                                    if (is_numeric($value)) {
+                                                                        $grandTotal += (float) $value;
+                                                                    }
+                                                                }
+                                                            @endphp
+                                                            <span class="badge bg-primary fs-6 px-3 py-2">
+                                                                Rp {{ number_format($grandTotal, 0, ',', '.') }}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        @endif
                                     </div>
                                 </div>
                             </div>
                         </div>
+                    </div>
+                @else
+                    <div class="alert alert-warning mt-4">
+                        <i class="bi bi-exclamation-triangle"></i> Data ringkasan pengeluaran belum tersedia atau kosong.
                     </div>
                 @endif
 

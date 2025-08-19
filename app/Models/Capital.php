@@ -24,11 +24,13 @@ class Capital extends Model
      */
     protected $fillable = [
         'user_id',
+        'nama',
         'tanggal',
         'keperluan',
-        'keterangan', 
+        'keterangan',
         'nominal',
-        'jenis'
+        'jenis',
+        'jumlah'
     ];
 
     /**
@@ -212,7 +214,7 @@ class Capital extends Model
      */
     public function getFormattedNominalAttribute(): string
     {
-        return 'Rp ' . number_format($this->nominal, 0, ',', '.');
+        return 'Rp ' . number_format((float) $this->nominal, 0, ',', '.');
     }
 
     /**
@@ -230,7 +232,7 @@ class Capital extends Model
             return 'Rp ' . number_format($nominal / 1000, 1) . 'K';
         }
         
-        return 'Rp ' . number_format($nominal, 0, ',', '.');
+        return 'Rp ' . number_format((float) $nominal, 0, ',', '.');
     }
 
     /**
@@ -390,7 +392,7 @@ class Capital extends Model
                 'user_id' => $capital->user_id,
                 'jenis' => $capital->jenis ?? 'masuk',
                 'nominal' => $capital->nominal,
-                'tanggal' => $capital->tanggal->format('Y-m-d')
+                'tanggal' => Carbon::parse($capital->tanggal)->format('Y-m-d')
             ]);
         });
 

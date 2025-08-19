@@ -52,6 +52,12 @@
             <i class="bi bi-list toggle-sidebar-btn"></i>
         </div><!-- End Logo -->
 
+        <div class="search-bar">
+            <form class="search-form d-flex align-items-center" method="POST" action="#">
+                <input type="text" name="query" placeholder="Search" title="Enter search keyword">
+                <button type="submit" title="Search"><i class="bi bi-search"></i></button>
+            </form>
+        </div><!-- End Search Bar -->
 
         <nav class="header-nav ms-auto">
             <ul class="d-flex align-items-center">
@@ -107,15 +113,6 @@
                     </ul><!-- End Profile Dropdown Items -->
                 </li><!-- End Profile Nav -->
 
-                <li class="nav-item pe-3">
-                    <form id="logout-form-header" action="{{ route('logout') }}" method="POST" class="d-inline">
-                        @csrf
-                        <button type="submit" class="nav-link nav-icon border-0 bg-transparent" title="Logout">
-                            <i class="bi bi-box-arrow-right"></i>
-                        </button>
-                    </form>
-                </li><!-- End Logout Nav -->
-
             </ul>
         </nav><!-- End Icons Navigation -->
 
@@ -126,130 +123,157 @@
 
         <ul class="sidebar-nav" id="sidebar-nav">
 
-            <!-- Dashboard -->
             <li class="nav-item">
                 <a wire:navigate class="nav-link {{ request()->is('dashboard') ? '' : 'collapsed' }}"
                     href="/dashboard">
-                    <i class="bi bi-speedometer2"></i>
+                    <i class="bi bi-grid"></i>
                     <span>Dashboard</span>
                 </a>
-            </li>
-
-            <!-- Modal -->
-            @php
-                $modalActive =
-                    Request::segment(1) === 'modal-awal' ||
-                    Request::segment(1) === 'pengeluaran-modal' ||
-                    Request::segment(1) === 'fixed-cost-page';
-            @endphp
+            </li><!-- End Dashboard Nav -->
 
             <li class="nav-item">
-                <a class="nav-link {{ $modalActive ? '' : 'collapsed' }}" data-bs-target="#modal-nav"
-                    data-bs-toggle="collapse" href="javascript:void(0)">
-                    <i class="bi bi-cash-coin"></i><span>Modal</span><i class="bi bi-chevron-down ms-auto"></i>
+                <a class="nav-link collapsed" data-bs-target="#components-nav" data-bs-toggle="collapse"
+                    href="#">
+                    <i class="bi bi-menu-button-wide"></i><span>Components</span><i
+                        class="bi bi-chevron-down ms-auto"></i>
                 </a>
-                <ul id="modal-nav" class="nav-content collapse {{ $modalActive ? 'show' : '' }}"
-                    data-bs-parent="#sidebar-nav">
+                <ul id="components-nav" class="nav-content collapse " data-bs-parent="#sidebar-nav">
                     <li>
-                        <a class="nav-link {{ request()->is('modal-awal') ? 'active' : 'collapsed' }}"
-                            href="/modal-awal">
-                            <i class="bi bi-plus-circle"></i><span>Input Modal Awal</span>
+                        <a href="components-alerts.html">
+                            <i class="bi bi-circle"></i><span>Alerts</span>
                         </a>
                     </li>
                     <li>
-                        <a class="nav-link {{ request()->is('pengeluaran-modal*') ? 'active' : 'collapsed' }}"
-                            href="/modal-page">
-                            <i class="bi bi-dash-circle"></i><span>Pengeluaran Modal Awal</span>
-                        </a>
-                    </li>
-                    <li>
-                        <a class="nav-link {{ request()->is('modal-tetap') ? 'active' : 'collapsed' }}"
-                            href="/fixed-cost-page">
-                            <i class="bi bi-bounding-box"></i><span>Modal Tetap</span>
+                        <a href="components-accordion.html">
+                            <i class="bi bi-circle"></i><span>Accordion</span>
                         </a>
                     </li>
                 </ul>
-            </li>
+            </li><!-- End Components Nav -->
 
-
-            <!-- Pendapatan -->
             <li class="nav-item">
-                <a wire:navigate class="nav-link {{ request()->is('incomes*') ? 'active' : 'collapsed' }}"
-                    href="/incomes">
-                    <i class="bi bi-graph-up"></i>
-                    <span>Pendapatan</span>
+                <a class="nav-link collapsed" data-bs-target="#forms-nav" data-bs-toggle="collapse" href="#">
+                    <i class="bi bi-journal-text"></i><span>Forms</span><i class="bi bi-chevron-down ms-auto"></i>
                 </a>
-            </li>
+                <ul id="forms-nav" class="nav-content collapse " data-bs-parent="#sidebar-nav">
+                    <li>
+                        <a href="forms-elements.html">
+                            <i class="bi bi-circle"></i><span>Form Elements</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="forms-layouts.html">
+                            <i class="bi bi-circle"></i><span>Form Layouts</span>
+                        </a>
+                    </li>
+                </ul>
+            </li><!-- End Forms Nav -->
 
-            <!-- Pengeluaran -->
             <li class="nav-item">
-                <a wire:navigate class="nav-link {{ request()->is('expenditures*') ? 'active' : 'collapsed' }}"
-                    href="/expenditures">
-                    <i class="bi bi-cart-dash"></i>
-                    <span>Pengeluaran</span>
+                <a class="nav-link collapsed" data-bs-target="#tables-nav" data-bs-toggle="collapse" href="#">
+                    <i class="bi bi-layout-text-window-reverse"></i><span>Tables</span><i
+                        class="bi bi-chevron-down ms-auto"></i>
                 </a>
-            </li>
+                <ul id="tables-nav" class="nav-content collapse " data-bs-parent="#sidebar-nav">
+                    <li>
+                        <a href="tables-general.html">
+                            <i class="bi bi-circle"></i><span>General Tables</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="tables-data.html">
+                            <i class="bi bi-circle"></i><span>Data Tables</span>
+                        </a>
+                    </li>
+                </ul>
+            </li><!-- End Tables Nav -->
 
-            <!-- Laporan -->
-            @php
-                $laporanActive =
-                    Request::segment(1) === 'laporan-harian' ||
-                    Request::segment(1) === 'laporan-bulanan' ||
-                    Request::segment(1) === 'laporan-tahunan' ||
-                    Request::segment(1) === 'profitloss';
-            @endphp
             <li class="nav-item">
-                <a class="nav-link {{ $laporanActive ? '' : 'collapsed' }}" data-bs-target="#laporan-nav"
-                    data-bs-toggle="collapse" href="javascript:void(0)">
-                    <i class="bi bi-journal-text"></i><span>Laporan</span><i class="bi bi-chevron-down ms-auto"></i>
+                <a class="nav-link collapsed" data-bs-target="#charts-nav" data-bs-toggle="collapse" href="#">
+                    <i class="bi bi-bar-chart"></i><span>Charts</span><i class="bi bi-chevron-down ms-auto"></i>
                 </a>
-                <ul id="laporan-nav" class="nav-content collapse {{ $laporanActive ? 'show' : '' }}"
-                    data-bs-parent="#sidebar-nav">
+                <ul id="charts-nav" class="nav-content collapse " data-bs-parent="#sidebar-nav">
                     <li>
-                        <a wire:navigate
-                            class="nav-link {{ request()->is('laporan-harian*') ? 'active' : 'collapsed' }}"
-                            href="/laporan-harian">
-                            <i class="bi bi-calendar-day"></i><span>Laporan Harian</span>
+                        <a href="charts-chartjs.html">
+                            <i class="bi bi-circle"></i><span>Chart.js</span>
                         </a>
                     </li>
                     <li>
-                        <a wire:navigate
-                            class="nav-link {{ request()->is('laporan-bulanan') ? 'active' : 'collapsed' }}"
-                            href="/laporan-bulanan">
-                            <i class="bi bi-calendar-month"></i><span>Laporan Bulanan</span>
+                        <a href="charts-apexcharts.html">
+                            <i class="bi bi-circle"></i><span>ApexCharts</span>
                         </a>
                     </li>
-                    <li>
-                        <a wire:navigate
-                            class="nav-link {{ request()->is('laporan-tahunan') ? 'active' : 'collapsed' }}"
-                            href="/report-tahunan">
-                            <i class="bi bi-calendar-month"></i><span>Laporan Tahunan</span>
-                        </a>
-                    </li>
-                    <li>
-                        <a wire:navigate class="nav-link {{ request()->is('profit-loss') ? 'active' : 'collapsed' }}"
-                            href="/profit-loss">
-                            <i class="bi bi-currency-dolar"></i><span>Laporan Rugi/Laba</span>
-                        </a>
-                    </li>
-            </li>
-        </ul>
-        </li>
+                </ul>
+            </li><!-- End Charts Nav -->
 
-        <li class="nav-item">
-            <a wire:navigate class="nav-link {{ request()->is('irr*') ? 'active' : 'collapsed' }}"
-                href="/irr-analysis">
-                <i class="bi bi-graph-up-arrow"></i>
-                <span>Tingkat Keuntungan</span>
-            </a>
-        </li>
+            <li class="nav-item">
+                <a class="nav-link collapsed" data-bs-target="#icons-nav" data-bs-toggle="collapse" href="#">
+                    <i class="bi bi-gem"></i><span>Icons</span><i class="bi bi-chevron-down ms-auto"></i>
+                </a>
+                <ul id="icons-nav" class="nav-content collapse " data-bs-parent="#sidebar-nav">
+                    <li>
+                        <a href="icons-bootstrap.html">
+                            <i class="bi bi-circle"></i><span>Bootstrap Icons</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="icons-remix.html">
+                            <i class="bi bi-circle"></i><span>Remix Icons</span>
+                        </a>
+                    </li>
+                </ul>
+            </li><!-- End Icons Nav -->
 
-        <li class="nav-item">
-            <a wire:navigate class="nav-link {{ request()->is('bep*') ? 'active' : 'collapsed' }}" href="/bep-form">
-                <i class="bi bi-bounding-box"></i>
-                <span>Titik Balik Modal</span>
-            </a>
-        </li>
+            <li class="nav-heading">Pages</li>
+
+            <li class="nav-item">
+                <a class="nav-link collapsed" href="users-profile.html">
+                    <i class="bi bi-person"></i>
+                    <span>Profile</span>
+                </a>
+            </li><!-- End Profile Page Nav -->
+
+            <li class="nav-item">
+                <a class="nav-link collapsed" href="pages-faq.html">
+                    <i class="bi bi-question-circle"></i>
+                    <span>F.A.Q</span>
+                </a>
+            </li><!-- End F.A.Q Page Nav -->
+
+            <li class="nav-item">
+                <a class="nav-link collapsed" href="pages-contact.html">
+                    <i class="bi bi-envelope"></i>
+                    <span>Contact</span>
+                </a>
+            </li><!-- End Contact Page Nav -->
+
+            <li class="nav-item">
+                <a class="nav-link collapsed" href="pages-register.html">
+                    <i class="bi bi-card-list"></i>
+                    <span>Register</span>
+                </a>
+            </li><!-- End Register Page Nav -->
+
+            <li class="nav-item">
+                <a class="nav-link collapsed" href="pages-login.html">
+                    <i class="bi bi-box-arrow-in-right"></i>
+                    <span>Login</span>
+                </a>
+            </li><!-- End Login Page Nav -->
+
+            <li class="nav-item">
+                <a class="nav-link collapsed" href="pages-error-404.html">
+                    <i class="bi bi-dash-circle"></i>
+                    <span>Error 404</span>
+                </a>
+            </li><!-- End Error 404 Page Nav -->
+
+            <li class="nav-item">
+                <a class="nav-link collapsed" href="pages-blank.html">
+                    <i class="bi bi-file-earmark"></i>
+                    <span>Blank</span>
+                </a>
+            </li><!-- End Blank Page Nav -->
 
         </ul>
 

@@ -168,27 +168,36 @@ class ExpenditurePage extends Component
                 return;
             }
 
-            $monthlyData = Expenditure::selectRaw('
-                YEAR(tanggal) as year, 
-                MONTH(tanggal) as month, 
-                SUM(jumlah) as total
-            ')
-                ->where('user_id', Auth::id())
-                ->whereNotNull('tanggal')
-                ->groupByRaw('YEAR(tanggal), MONTH(tanggal)')
-                ->orderByRaw('YEAR(tanggal) DESC, MONTH(tanggal) DESC')
-                ->get();
+            // Buat query dasar untuk user yang sedang login
+            $query = Expenditure::where('user_id', Auth::id())
+                ->whereNotNull('tanggal');
 
-            $this->monthlyTotals = $monthlyData->mapWithKeys(function ($item) {
-                $key = sprintf('%04d-%02d', $item->year, $item->month);
-                return [$key => $item->total];
-            })->toArray();
-            
-        } catch (\Exception $e) {
+            // Jika tahun dipilih, filter berdasarkan tahun
+            if (!empty($this->filterYear) && is_numeric($this->filterYear)) {
+                $query->whereYear('tanggal', (int)$this->filterYear);
+            }
+
             try {
-                $expenditures = Expenditure::where('user_id', Auth::id())
-                    ->whereNotNull('tanggal')
+                // Coba gunakan selectRaw untuk performa yang lebih baik
+                $monthlyData = $query->selectRaw('
+                    YEAR(tanggal) as year, 
+                    MONTH(tanggal) as month, 
+                    SUM(jumlah) as total
+                ')
+                    ->groupByRaw('YEAR(tanggal), MONTH(tanggal)')
+                    ->orderByRaw('YEAR(tanggal) DESC, MONTH(tanggal) DESC')
                     ->get();
+
+                $this->monthlyTotals = $monthlyData->mapWithKeys(function ($item) {
+                    $key = sprintf('%04d-%02d', $item->year, $item->month);
+                    return [$key => $item->total];
+                })->toArray();
+
+            } catch (\Exception $rawQueryException) {
+                // Fallback ke method manual jika selectRaw gagal
+                Log::warning('selectRaw failed, using fallback method: ' . $rawQueryException->getMessage());
+                
+                $expenditures = $query->get();
 
                 if ($expenditures->isEmpty()) {
                     $this->monthlyTotals = [];
@@ -214,14 +223,13 @@ class ExpenditurePage extends Component
                     })
                     ->sortKeysDesc()
                     ->toArray();
-                    
-            } catch (\Exception $fallbackError) {
-                $this->monthlyTotals = [];
-                Log::error('Error in loadMonthlyTotals fallback: ' . $fallbackError->getMessage());
             }
 
+        } catch (\Exception $e) {
+            $this->monthlyTotals = [];
             Log::error('Error loading monthly totals: ' . $e->getMessage(), [
                 'user_id' => Auth::id(),
+                'filterYear' => $this->filterYear,
                 'trace' => $e->getTraceAsString()
             ]);
         }
@@ -508,6 +516,7 @@ class ExpenditurePage extends Component
         $this->total = 0;
         $this->resetInput();
         $this->resetPage(); // Reset pagination saat clear filter
+        $this->loadMonthlyTotals(); // Reload monthly totals after clearing filters
     }
 
     public function resetInput()
@@ -535,6 +544,7 @@ class ExpenditurePage extends Component
         $this->resetInput();
         $this->resetPage(); // Reset pagination saat ganti filter
         $this->loadExpenditures();
+        $this->loadMonthlyTotals(); // Reload monthly totals when year filter changes
     }
 
     // Tambahkan method untuk mengubah jumlah data per halaman

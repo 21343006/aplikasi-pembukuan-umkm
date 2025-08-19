@@ -318,3 +318,13 @@
   }
 
 })();
+
+/**
+ * Search bar toggle
+ */
+const searchBarToggle = select('.search-bar-toggle');
+if (searchBarToggle) {
+  on('click', '.search-bar-toggle', function(e) {
+    select('.search-bar').classList.toggle('search-bar-show');
+  });
+}
