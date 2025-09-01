@@ -433,6 +433,7 @@
                                                 <th>Bulan</th>
                                                 <th>Pendapatan</th>
                                                 <th>Pengeluaran</th>
+                                                <th>Biaya Tetap</th>
                                                 <th>Laba/Rugi</th>
                                                 <th>Margin (%)</th>
                                             </tr>
@@ -456,6 +457,9 @@
                                                     <td class="text-end text-danger">
                                                         Rp {{ number_format($data['pengeluaran'], 0, ',', '.') }}
                                                     </td>
+                                                    <td class="text-end text-info">
+                                                        Rp {{ number_format($data['biaya_tetap'], 0, ',', '.') }}
+                                                    </td>
                                                     <td class="text-end {{ $data['laba_rugi'] >= 0 ? 'text-success' : 'text-danger' }} fw-bold">
                                                         @if ($data['laba_rugi'] >= 0)
                                                             Rp {{ number_format($data['laba_rugi'], 0, ',', '.') }}
@@ -477,7 +481,7 @@
                                                 $totalYearMargin = $totalYearIncome > 0 ? ($totalYearProfit / $totalYearIncome) * 100 : 0;
                                             @endphp
                                             <tr class="table-secondary border-top border-2">
-                                                <td class="fw-bold">TOTAL TAHUN {{ $selectedYear }}</td>
+                                                <td class="fw-bold" colspan="4">TOTAL TAHUN {{ $selectedYear }}</td>
                                                 <td class="text-end text-success fw-bold">
                                                     Rp {{ number_format($totalYearIncome, 0, ',', '.') }}
                                                 </td>

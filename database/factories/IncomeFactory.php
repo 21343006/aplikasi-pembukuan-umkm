@@ -13,6 +13,7 @@ class IncomeFactory extends Factory
             'produk' => fake()->word(),
             'jumlah_terjual' => fake()->numberBetween(1, 20),
             'harga_satuan' => fake()->numberBetween(5000, 50000),
+            'biaya_per_unit' => fake()->numberBetween(1000, 15000)
         ];
     }
 }

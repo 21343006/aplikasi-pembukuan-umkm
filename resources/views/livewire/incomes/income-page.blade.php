@@ -170,31 +170,36 @@
 
                 {{-- Jika bulan & tahun sudah dipilih --}}
                 @if ($filterMonth && $filterYear)
-                    <div class="d-flex justify-content-between align-items-center pt-4">
-                        <h5 class="card-title mb-0">
-                            <i class="bi bi-table"></i> Data Pendapatan - {{ $this->monthName }} {{ $filterYear }}
-                            @if ($jumlah > 0)
-                                <span class="badge bg-success ms-2">
-                                    Total: Rp {{ number_format($jumlah, 0, ',', '.') }}
-                                </span>
-                            @endif
-                        </h5>
-                        <div class="d-flex align-items-center gap-3">
-                            {{-- Dropdown untuk memilih jumlah data per halaman --}}
-                            <div class="d-flex align-items-center">
-                                <label class="form-label mb-0 me-2">Tampilkan:</label>
-                                <select wire:model.live="perPage" class="form-select form-select-sm"
-                                    style="width: auto;">
-                                    <option value="5">5</option>
-                                    <option value="10">10</option>
-                                    <option value="25">25</option>
-                                    <option value="50">50</option>
-                                </select>
-                                <span class="ms-2 text-muted">data per halaman</span>
+                    <div class="pt-4">
+                        <div class="row gy-2 gx-2 align-items-center">
+                            <div class="col-lg-6">
+                                <h5 class="card-title mb-0">
+                                    <i class="bi bi-table"></i> Data Pendapatan - {{ $this->monthName }} {{ $filterYear }}
+                                    @if ($jumlah > 0)
+                                        <span class="badge bg-success ms-2">
+                                            Total: Rp {{ number_format($jumlah, 0, ',', '.') }}
+                                        </span>
+                                    @endif
+                                </h5>
                             </div>
-                            <button class="btn btn-primary" wire:click="openModal">
-                                <i class="bi bi-plus-circle"></i> Tambah Data
-                            </button>
+                            <div class="col-lg-6">
+                                <div class="d-flex align-items-center justify-content-lg-end gap-2">
+                                    {{-- Dropdown untuk memilih jumlah data per halaman --}}
+                                    <div class="d-flex align-items-center">
+                                        <label class="form-label mb-0 me-2 d-none d-md-block">Tampilkan:</label>
+                                        <select wire:model.live="perPage" class="form-select form-select-sm"
+                                            style="width: auto;">
+                                            <option value="5">5</option>
+                                            <option value="10">10</option>
+                                            <option value="25">25</option>
+                                            <option value="50">50</option>
+                                        </select>
+                                    </div>
+                                    <button class="btn btn-primary w-100 w-md-auto" wire:click="openModal">
+                                        <i class="bi bi-plus-circle"></i> Tambah Data
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -208,7 +213,9 @@
                                         <th width="25%">Produk/Jasa</th>
                                         <th width="12%">Jumlah Terjual</th>
                                         <th width="15%">Harga Satuan</th>
-                                        <th width="15%">Total Harga</th>
+                                        <th width="15%">Biaya/Unit</th>
+                                        <th width="15%">Total Pendapatan</th>
+                                        <th width="15%">Laba</th>
                                         <th width="16%">Aksi</th>
                                     </tr>
                                 </thead>
@@ -240,9 +247,20 @@
                                                     </span>
                                                 </td>
                                                 <td>
+                                                    <span class="badge bg-secondary">
+                                                        Rp {{ number_format($income->biaya_per_unit ?? 0, 0, ',', '.') }}
+                                                    </span>
+                                                </td>
+                                                <td>
                                                     <span class="badge bg-success fs-6">
                                                         Rp
-                                                        {{ number_format(($income->jumlah_terjual ?? 0) * ($income->harga_satuan ?? 0), 0, ',', '.') }}
+                                                        {{ number_format($income->total_pendapatan ?? 0, 0, ',', '.') }}
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <span class="badge bg-primary fs-6">
+                                                        Rp
+                                                        {{ number_format($income->laba ?? 0, 0, ',', '.') }}
                                                     </span>
                                                 </td>
                                                 <td>
@@ -265,22 +283,32 @@
                                 </tbody>
                                 <tfoot class="table-dark">
                                     <tr>
-                                        <th colspan="5" class="text-end">Total Pendapatan {{ $this->monthName }}
+                                        <th colspan="6" class="text-end">Total Pendapatan {{ $this->monthName }}
                                             {{ $filterYear }}:</th>
                                         <th>
                                             <span class="badge bg-success fs-6">
                                                 Rp {{ number_format($jumlah, 0, ',', '.') }}
                                             </span>
                                         </th>
-                                        <th></th>
+                                        <th colspan="2"></th>
+                                    </tr>
+                                    <tr>
+                                        <th colspan="6" class="text-end">Total Laba {{ $this->monthName }}
+                                            {{ $filterYear }}:</th>
+                                        <th>
+                                            <span class="badge bg-primary fs-6">
+                                                Rp {{ number_format($totalLaba, 0, ',', '.') }}
+                                            </span>
+                                        </th>
+                                        <th colspan="2"></th>
                                     </tr>
                                 </tfoot>
                             </table>
                         </div>
 
                         {{-- Pagination dengan informasi data --}}
-                        <div class="d-flex justify-content-between align-items-center mt-3">
-                            <div class="text-muted">
+                        <div class="d-sm-flex justify-content-sm-between align-items-sm-center mt-3">
+                            <div class="text-muted text-center text-sm-start mb-2 mb-sm-0">
                                 <small>
                                     Menampilkan {{ $paginatedIncomes->firstItem() ?? 0 }}
                                     sampai {{ $paginatedIncomes->lastItem() ?? 0 }}
@@ -290,7 +318,7 @@
 
                             {{-- Custom Pagination Links --}}
                             @if ($paginatedIncomes->hasPages())
-                                <nav aria-label="Pagination Navigation">
+                                <nav aria-label="Pagination Navigation" class="d-flex justify-content-center">
                                     <ul class="pagination pagination-sm mb-0">
                                         {{-- Previous Page Link --}}
                                         @if ($paginatedIncomes->onFirstPage())
@@ -375,6 +403,8 @@
         </div>
     </section>
 
+    <livewire:incomes.product-analysis />
+
     {{-- Modal Form --}}
     @if ($showModal)
         <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.5);" tabindex="-1">
@@ -451,6 +481,24 @@
                                     </div>
                                 </div>
                             </div>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label">Biaya Produksi per Unit</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text bg-secondary text-white">Rp</span>
+                                            <input type="number"
+                                                class="form-control @error('biaya_per_unit') is-invalid @enderror"
+                                                wire:model.live="biaya_per_unit" min="0" step="0.01"
+                                                placeholder="0">
+                                            @error('biaya_per_unit')
+                                                <div class="invalid-feedback">{{ $message }}</div>
+                                            @enderror
+                                        </div>
+                                        <div class="form-text">Opsional. Digunakan untuk menghitung laba dan rekomendasi harga.</div>
+                                    </div>
+                                </div>
+                            </div>
                             @if ($jumlah_terjual && $harga_satuan)
                                 <div class="card bg-light">
                                     <div class="card-body">
@@ -481,38 +529,48 @@
                                                     class="text-muted">{{ \Illuminate\Support\Str::limit($produk ?? '', 20) }}</span>
                                             </div>
                                         </div>
+                                        <div class="row mt-2">
+                                            <div class="col-md-3">
+                                                <strong>Biaya Total:</strong><br>
+                                                <span class="badge bg-secondary">
+                                                    Rp
+                                                    {{ number_format(($jumlah_terjual ?? 0) * ($biaya_per_unit ?? 0), 0, ',', '.') }}
+                                                </span>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <strong>Laba Kotor:</strong><br>
+                                                @php
+                                                    $total = ($jumlah_terjual ?? 0) * ($harga_satuan ?? 0);
+                                                    $biaya = ($jumlah_terjual ?? 0) * ($biaya_per_unit ?? 0);
+                                                    $laba = max(0, $total - $biaya);
+                                                    $margin = $total > 0 ? ($laba / $total) * 100 : 0;
+                                                @endphp
+                                                <span class="badge bg-primary">Rp {{ number_format($laba, 0, ',', '.') }}</span>
+                                                <span class="badge bg-info text-dark">{{ number_format($margin, 1, ',', '.') }}%</span>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             @endif
-                            @if ($tanggal && $produk && $jumlah_terjual && $harga_satuan)
-                                <div class="card bg-light">
+                            @if ($biaya_per_unit > 0)
+                                <div class="card bg-light mt-2">
                                     <div class="card-body">
-                                        <h6 class="card-title"><i class="bi bi-eye"></i> Preview Data:</h6>
-                                        <div class="row">
-                                            <div class="col-md-3">
-                                                <strong>Tanggal:</strong><br>
-                                                <span class="badge bg-secondary">
-                                                    {{ \Carbon\Carbon::parse($tanggal)->format('d/m/Y') }}
-                                                </span>
+                                        <h6 class="card-title"><i class="bi bi-lightbulb"></i> Rekomendasi Harga Jual</h6>
+                                        <div class="row g-2 align-items-end">
+                                            <div class="col-md-4">
+                                                <label class="form-label mb-1">Margin yang Diinginkan (%)</label>
+                                                <input type="number" min="0" max="90" step="1" class="form-control" wire:model.live="desired_margin" placeholder="contoh: 30">
                                             </div>
-                                            <div class="col-md-3">
-                                                <strong>Produk/Jasa:</strong><br>
-                                                <span
-                                                    class="text-muted">{{ \Illuminate\Support\Str::limit($produk ?? '', 15) }}</span>
-                                            </div>
-                                            <div class="col-md-3">
-                                                <strong>Qty x Harga:</strong><br>
-                                                <span class="badge bg-info">
-                                                    {{ number_format($jumlah_terjual, 0, ',', '.') }} x Rp
-                                                    {{ number_format($harga_satuan, 0, ',', '.') }}
-                                                </span>
-                                            </div>
-                                            <div class="col-md-3">
-                                                <strong>Total Pendapatan:</strong><br>
-                                                <span class="badge bg-success">
-                                                    Rp
-                                                    {{ number_format($jumlah_terjual * $harga_satuan, 0, ',', '.') }}
-                                                </span>
+                                            <div class="col-md-8">
+                                                @php
+                                                    $desired = (float) ($desired_margin ?? 30);
+                                                    $recPrice = ($biaya_per_unit ?? 0) * (1 + ($desired/100));
+                                                @endphp
+                                                <div>
+                                                    <strong>Harga Disarankan:</strong>
+                                                    <span class="badge bg-success">Rp {{ number_format($recPrice, 0, ',', '.') }}</span>
+                                                    <small class="text-muted ms-2">= biaya/unit × (1 + margin)</small>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>

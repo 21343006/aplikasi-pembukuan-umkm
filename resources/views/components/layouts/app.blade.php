@@ -5,7 +5,7 @@
     <meta charset="utf-8">
     <meta content="width=device-width, initial-scale=1.0" name="viewport">
 
-    <title>{{ $title ?? 'Pembukuan UMKM' }}</title>
+    <title>{{ $title ?? (Auth::user()->business_name ?? 'Pembukuan UMKM') }}</title>
     <meta content="" name="description">
     <meta content="" name="keywords">
 
@@ -70,29 +70,30 @@
 
                 <li class="nav-item dropdown pe-3">
 
-                    <a class="nav-link nav-profile d-flex align-items-center pe-0" href="#"
+                    <a class="nav-link nav-profile d-flex align-items-center pe-0" href="javascript:void(0);"
                         data-bs-toggle="dropdown">
-                        <img src="/assets/img/profile-img.jpg" alt="Profile" class="rounded-circle">
+                        @if (Auth::user()->profile_photo_path)
+                            <img src="{{ asset('storage/' . Auth::user()->profile_photo_path) }}" alt="Profile" class="rounded-circle profile-picture-circle header-photo">
+                        @else
+                            <img src="/assets/img/profile-img.jpg" alt="Profile" class="rounded-circle profile-picture-circle header-photo">
+                        @endif
                         <span class="d-none d-md-block dropdown-toggle ps-2">{{ Auth::user()->name }}</span>
                     </a><!-- End Profile Image Icon -->
 
                     <ul class="dropdown-menu dropdown-menu-end dropdown-menu-arrow profile">
                         <li class="dropdown-header">
                             <h6>{{ Auth::user()->name }}</h6>
-                            <span>Web Designer</span>
+                            <span>{{ Auth::user()->business_name ?? 'UMKM' }}</span>
                         </li>
                         <li>
                             <hr class="dropdown-divider">
                         </li>
 
                         <li>
-                            <a class="dropdown-item d-flex align-items-center" href="users-profile.html">
+                            <a class="dropdown-item d-flex align-items-center" href="{{ route('profile') }}">
                                 <i class="bi bi-person"></i>
-                                <span>My Profile</span>
+                                <span>Profil Saya</span>
                             </a>
-                        </li>
-                        <li>
-                            <hr class="dropdown-divider">
                         </li>
 
                         <li>
@@ -121,7 +122,7 @@
     <!-- ======= Sidebar ======= -->
     <aside id="sidebar" class="sidebar">
 
-        <ul class="sidebar-nav" id="sidebar-nav">
+        <ul class="sidebar-nav" id="sidebar-nav" style="display: flex; flex-direction: column; height: 100%;">
 
             <li class="nav-item">
                 <a wire:navigate class="nav-link {{ request()->routeIs('dashboard') ? '' : 'collapsed' }}"
@@ -151,7 +152,7 @@
 
             <li class="nav-item">
                 <a class="nav-link {{ request()->routeIs('modal.page', 'modal.awal', 'fixed.cost') ? '' : 'collapsed' }}"
-                    data-bs-target="#modal-nav" data-bs-toggle="collapse" href="#">
+                    data-bs-target="#modal-nav" data-bs-toggle="collapse">
                     <i class="bi bi-wallet2"></i><span>Modal</span><i class="bi bi-chevron-down ms-auto"></i>
                 </a>
                 <ul id="modal-nav"
@@ -179,30 +180,24 @@
             </li><!-- End Modal Nav -->
 
             <li class="nav-item">
-                <a class="nav-link {{ request()->routeIs('laporan.harian', 'laporan.bulanan', 'laporan.tahunan', 'profit.loss') ? '' : 'collapsed' }}"
-                    data-bs-target="#laporan-nav" data-bs-toggle="collapse" href="#">
+                <a class="nav-link {{ request()->routeIs( 'laporan.bulanan', 'laporan.tahunan', 'profit.loss') ? '' : 'collapsed' }}"
+                    data-bs-target="#laporan-nav" data-bs-toggle="collapse">
                     <i class="bi bi-journal-text"></i><span>Laporan</span><i
                         class="bi bi-chevron-down ms-auto"></i>
                 </a>
                 <ul id="laporan-nav"
-                    class="nav-content collapse {{ request()->routeIs('laporan.harian', 'laporan.bulanan', 'laporan.tahunan', 'profit.loss') ? 'show' : '' }}"
+                    class="nav-content collapse {{ request()->routeIs('laporan.bulanan', 'laporan.tahunan', 'profit.loss') ? 'show' : '' }}"
                     data-bs-parent="#sidebar-nav">
-                    <li>
-                        <a wire:navigate href="{{ route('laporan.harian') }}"
-                            class="{{ request()->routeIs('laporan.harian') ? 'active' : '' }}">
-                            <i class="bi bi-circle"></i><span>Laporan Harian</span>
-                        </a>
-                    </li>
                     <li>
                         <a wire:navigate href="{{ route('laporan.bulanan') }}"
                             class="{{ request()->routeIs('laporan.bulanan') ? 'active' : '' }}">
-                            <i class="bi bi-circle"></i><span>Laporan Bulanan</span>
+                            <i class="bi bi-circle"></i><span>Laporan Keuangan</span>
                         </a>
                     </li>
                     <li>
                         <a wire:navigate href="{{ route('laporan.tahunan') }}"
                             class="{{ request()->routeIs('laporan.tahunan') ? 'active' : '' }}">
-                            <i class="bi bi-circle"></i><span>Laporan Tahunan</span>
+                            <i class="bi bi-circle"></i><span>Laporan Keuangan Tahunan</span>
                         </a>
                     </li>
                     <li>
@@ -216,7 +211,7 @@
 
             <li class="nav-item">
                 <a class="nav-link {{ request()->routeIs('bep.form', 'irr.analysis') ? '' : 'collapsed' }}"
-                    data-bs-target="#analisis-nav" data-bs-toggle="collapse" href="#">
+                    data-bs-target="#analisis-nav" data-bs-toggle="collapse">
                     <i class="bi bi-graph-up"></i><span>Analisis</span><i class="bi bi-chevron-down ms-auto"></i>
                 </a>
                 <ul id="analisis-nav"
@@ -234,8 +229,35 @@
                             <i class="bi bi-circle"></i><span>IRR</span>
                         </a>
                     </li>
+                    <li>
+                        <a wire:navigate href="{{ route('what.if.analysis') }}"
+                            class="{{ request()->routeIs('what.if.analysis') ? 'active' : '' }}">
+                            <i class="bi bi-circle"></i><span>Bagaimana Jika?</span>
+                        </a>
+                    </li>
                 </ul>
             </li><!-- End Analisis Nav -->
+
+            <li class="nav-heading">Pengaturan</li>
+
+            <li class="nav-item">
+                <a wire:navigate class="nav-link {{ request()->routeIs('profile') ? '' : 'collapsed' }}"
+                    href="{{ route('profile') }}">
+                    <i class="bi bi-person"></i>
+                    <span>Profil</span>
+                </a>
+            </li><!-- End Profile Nav -->
+
+            <li class="nav-item mt-auto">
+                <a class="nav-link collapsed" href="{{ route('logout') }}"
+                    onclick="event.preventDefault(); document.getElementById('logout-form-sidebar').submit();">
+                    <i class="bi bi-box-arrow-right"></i>
+                    <span>Keluar</span>
+                </a>
+                <form id="logout-form-sidebar" action="{{ route('logout') }}" method="POST" style="display: none;">
+                    @csrf
+                </form>
+            </li><!-- End Logout Nav -->
 
         </ul>
 

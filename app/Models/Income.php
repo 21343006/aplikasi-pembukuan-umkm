@@ -17,6 +17,9 @@ class Income extends Model
         'produk',
         'jumlah_terjual',
         'harga_satuan',
+        'biaya_per_unit',
+        'total_pendapatan',
+        'laba',
     ];
 
     // Tanggal diperlakukan sebagai objek Carbon
@@ -24,18 +27,15 @@ class Income extends Model
         'tanggal' => 'date',
         'harga_satuan' => 'decimal:2',
         'jumlah_terjual' => 'integer',
+        'biaya_per_unit' => 'decimal:2',
+        'total_pendapatan' => 'decimal:2',
+        'laba' => 'decimal:2',
     ];
 
     // Relasi dengan User
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
-    }
-
-    // Accessor untuk total pendapatan per produk
-    public function getTotalAttribute(): float
-    {
-        return (float)($this->jumlah_terjual * $this->harga_satuan);
     }
 
     /**

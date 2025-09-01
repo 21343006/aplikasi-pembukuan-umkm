@@ -21,7 +21,10 @@ class IncomePage extends Component
     public $produk = '';
     public $jumlah_terjual = 0;
     public $harga_satuan = 0;
+    public $biaya_per_unit = 0;
+    public $desired_margin = 30;
     public $jumlah = 0;
+    public $totalLaba = 0;
     public $showModal = false;
     public $isEdit = false;
     public $income_id = null;
@@ -58,6 +61,7 @@ class IncomePage extends Component
             'produk' => 'required|string|max:255',
             'jumlah_terjual' => 'required|integer|min:1',
             'harga_satuan' => 'required|numeric|min:0',
+            'biaya_per_unit' => 'nullable|numeric|min:0',
         ];
     }
 
@@ -74,6 +78,8 @@ class IncomePage extends Component
             'harga_satuan.required' => 'Harga satuan wajib diisi.',
             'harga_satuan.numeric' => 'Harga satuan harus berupa angka.',
             'harga_satuan.min' => 'Harga satuan tidak boleh kurang dari 0.',
+            'biaya_per_unit.numeric' => 'Biaya per unit harus berupa angka.',
+            'biaya_per_unit.min' => 'Biaya per unit tidak boleh kurang dari 0.',
         ];
     }
 
@@ -157,14 +163,14 @@ class IncomePage extends Component
             $month = (int) $this->filterMonth;
             $year = (int) $this->filterYear;
 
-            // Hitung total pendapatan dengan selectRaw untuk menangani null
-            $totalQuery = Income::where('user_id', Auth::id())
+            $totals = Income::where('user_id', Auth::id())
                 ->whereMonth('tanggal', $month)
                 ->whereYear('tanggal', $year)
-                ->selectRaw('COALESCE(SUM(jumlah_terjual * harga_satuan), 0) as total_pendapatan')
+                ->selectRaw('COALESCE(SUM(total_pendapatan), 0) as total_pendapatan, COALESCE(SUM(laba), 0) as total_laba')
                 ->first();
 
-            $this->jumlah = $totalQuery->total_pendapatan ?? 0;
+            $this->jumlah = $totals->total_pendapatan ?? 0;
+            $this->totalLaba = $totals->total_laba ?? 0;
 
             // Ambil data incomes dan konversi ke array
             $this->incomes = Income::where('user_id', Auth::id())
@@ -342,32 +348,27 @@ class IncomePage extends Component
                 return;
             }
 
+            $total_pendapatan = (float) $this->harga_satuan * (int) $this->jumlah_terjual;
+            $laba = ($this->harga_satuan - $this->biaya_per_unit) * $this->jumlah_terjual;
+
             $data = [
                 'user_id' => Auth::id(),
                 'tanggal' => $this->tanggal,
                 'produk' => trim((string) $this->produk),
                 'jumlah_terjual' => (int) $this->jumlah_terjual,
                 'harga_satuan' => (float) $this->harga_satuan,
+                'biaya_per_unit' => (float) ($this->biaya_per_unit ?? 0),
+                'total_pendapatan' => $total_pendapatan,
+                'laba' => $laba,
             ];
 
             if ($this->isEdit && $this->income_id) {
                 $income = Income::where('user_id', Auth::id())->findOrFail($this->income_id);
-                $income->user_id = $data['user_id'];
-                $income->tanggal = $data['tanggal'];
-                $income->produk = $data['produk'];
-                $income->jumlah_terjual = $data['jumlah_terjual'];
-                $income->harga_satuan = $data['harga_satuan'];
-                $income->save();
+                $income->update($data);
 
                 session()->flash('message', 'Data berhasil diperbarui!');
             } else {
-                $income = new Income;
-                $income->user_id = $data['user_id'];
-                $income->tanggal = $data['tanggal'];
-                $income->produk = $data['produk'];
-                $income->jumlah_terjual = $data['jumlah_terjual'];
-                $income->harga_satuan = $data['harga_satuan'];
-                $income->save();
+                Income::create($data);
 
                 session()->flash('message', 'Data berhasil ditambahkan!');
             }
@@ -375,6 +376,7 @@ class IncomePage extends Component
             $this->closeModal();
             $this->loadIncomes();
             $this->loadMonthlyTotals();
+            $this->dispatch('loadProductAnalysis', ['month' => $this->filterMonth, 'year' => $this->filterYear]);
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             Log::error('Income not found: ' . $e->getMessage(), [
                 'income_id' => $this->income_id,
@@ -418,6 +420,7 @@ class IncomePage extends Component
             $this->produk = (string) ($income->produk ?? '');
             $this->jumlah_terjual = (int) ($income->jumlah_terjual ?? 0);
             $this->harga_satuan = (float) ($income->harga_satuan ?? 0);
+            $this->biaya_per_unit = (float) ($income->biaya_per_unit ?? 0);
             $this->isEdit = true;
             $this->showModal = true;
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
@@ -459,6 +462,7 @@ class IncomePage extends Component
 
             $this->loadIncomes();
             $this->loadMonthlyTotals();
+            $this->dispatch('loadProductAnalysis', ['month' => $this->filterMonth, 'year' => $this->filterYear]);
             session()->flash('message', 'Data berhasil dihapus!');
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             Log::error('Income not found for delete: ' . $e->getMessage(), [
@@ -489,7 +493,6 @@ class IncomePage extends Component
                 return;
             }
 
-            // Get all incomes for export (not just paginated ones)
             $incomes = Income::where('user_id', Auth::id())
                 ->whereMonth('tanggal', (int)$this->filterMonth)
                 ->whereYear('tanggal', (int)$this->filterYear)
@@ -501,77 +504,65 @@ class IncomePage extends Component
                 return;
             }
 
-            // Nama file dengan format: pendapatan_YYYY-MM.csv
             $monthName = $this->monthNames[(int)$this->filterMonth];
             $fileName = sprintf('pendapatan_%s_%s.csv', $monthName, $this->filterYear);
 
-            // Header CSV
             $headers = [
                 'Content-Type' => 'text/csv; charset=UTF-8',
                 'Content-Disposition' => 'attachment; filename="' . $fileName . '"',
-                'Cache-Control' => 'must-revalidate, post-check=0, pre-check=0',
-                'Expires' => '0',
-                'Pragma' => 'public',
             ];
 
-            // Callback untuk generate CSV
             $callback = function () use ($incomes) {
                 $file = fopen('php://output', 'w');
 
-                // Add BOM untuk support Unicode di Excel
+                // Add BOM to support Unicode in Excel
                 fprintf($file, chr(0xEF) . chr(0xBB) . chr(0xBF));
 
-                // Header kolom
+                // Column headers
                 fputcsv($file, [
                     'No',
                     'Tanggal',
                     'Produk/Jasa',
                     'Jumlah Terjual',
                     'Harga Satuan',
+                    'Biaya per Unit',
                     'Total Pendapatan',
+                    'Laba',
                     'Tanggal Dibuat',
                     'Tanggal Diupdate'
-                ], ';');
+                ]);
 
-                // Data rows
                 $no = 1;
                 $grandTotal = 0;
+                $totalLaba = 0;
                 foreach ($incomes as $income) {
                     if (!$income) continue;
 
-                    $jumlahTerjual = (float) ($income->jumlah_terjual ?? 0);
-                    $hargaSatuan = (float) ($income->harga_satuan ?? 0);
-                    $total = $jumlahTerjual * $hargaSatuan;
-                    $grandTotal += $total;
-
-                    $tanggal = Carbon::parse($income->tanggal)->format('d/m/Y');
-                    $createdAt = Carbon::parse($income->created_at)->format('d/m/Y H:i:s');
-                    $updatedAt = Carbon::parse($income->updated_at)->format('d/m/Y H:i:s');
+                    $grandTotal += $income->total_pendapatan;
+                    $totalLaba += $income->laba;
 
                     fputcsv($file, [
                         $no++,
-                        $tanggal,
+                        Carbon::parse($income->tanggal)->format('Y-m-d'),
                         (string) ($income->produk ?? ''),
-                        number_format($jumlahTerjual, 0, ',', '.'),
-                        number_format($hargaSatuan, 0, ',', '.'),
-                        number_format($total, 0, ',', '.'),
-                        $createdAt,
-                        $updatedAt
-                    ], ';');
+                        $income->jumlah_terjual,
+                        $income->harga_satuan,
+                        $income->biaya_per_unit,
+                        $income->total_pendapatan,
+                        $income->laba,
+                        Carbon::parse($income->created_at)->format('Y-m-d H:i:s'),
+                        Carbon::parse($income->updated_at)->format('Y-m-d H:i:s')
+                    ]);
                 }
 
-                // Row total
-                fputcsv($file, [], ';'); // Empty row
+                // Total row
+                fputcsv($file, []); // Empty row
                 fputcsv($file, [
-                    '',
-                    '',
-                    '',
-                    '',
-                    'TOTAL:',
-                    number_format($grandTotal, 0, ',', '.'),
-                    '',
-                    ''
-                ], ';');
+                    '', '', '', '', '', 'TOTAL:',
+                    $grandTotal,
+                    $totalLaba,
+                    '', ''
+                ]);
 
                 fclose($file);
             };
@@ -586,7 +577,6 @@ class IncomePage extends Component
             ]);
 
             session()->flash('error', 'Terjadi kesalahan saat export data. Silakan coba lagi.');
-            return;
         }
     }
 
@@ -607,6 +597,8 @@ class IncomePage extends Component
             'produk',
             'jumlah_terjual',
             'harga_satuan',
+            'biaya_per_unit',
+            'desired_margin',
             'income_id',
             'isEdit'
         ]);
@@ -620,6 +612,7 @@ class IncomePage extends Component
         $this->resetPage(); // Reset pagination saat ganti filter
         $this->loadIncomes();
         $this->loadMonthlyTotals();
+        $this->dispatch('loadProductAnalysis', ['month' => $this->filterMonth, 'year' => $this->filterYear]);
     }
 
     public function updatedFilterYear()
@@ -628,6 +621,7 @@ class IncomePage extends Component
         $this->resetPage(); // Reset pagination saat ganti filter
         $this->loadIncomes();
         $this->loadMonthlyTotals();
+        $this->dispatch('loadProductAnalysis', ['month' => $this->filterMonth, 'year' => $this->filterYear]);
     }
 
     // Tambahkan method untuk mengubah jumlah data per halaman

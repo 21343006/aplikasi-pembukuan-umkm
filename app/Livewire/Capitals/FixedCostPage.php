@@ -507,14 +507,6 @@ class FixedCostPage extends Component
         return collect($this->fixedCosts);
     }
 
-    public function getAvailableYears()
-    {
-        $currentYear = now()->year;
-        $startYear = 2020;
-        
-        return range($currentYear + 1, $startYear);
-    }
-
     public function render()
     {
         return view('livewire.capitals.fixed-cost-page');

@@ -8,12 +8,12 @@ use App\Livewire\Capitals\ModalPage;
 use App\Livewire\Expenditures\ExpenditurePage;
 use App\Livewire\Capitals\FixedCostPage;
 use App\Livewire\Incomes\IncomePage;
-use App\Livewire\ProfitLoss as LivewireProfitLoss;
 use App\Livewire\Reports\IrrPage;
 use App\Livewire\Reports\ProfitLoss;
 use App\Livewire\Reports\ReportbulananList;
-use App\Livewire\Reports\ReportharianPage;
 use App\Livewire\Reports\Reporttahunan;
+use App\Livewire\Simulations\WhatIfAnalysis;
+use App\Livewire\UserProfile;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
 
@@ -40,6 +40,7 @@ Route::post('/logout', function () {
 // Protected routes (untuk user yang sudah login)
 Route::middleware('auth')->group(function () {
     Route::get('/dashboard', \App\Livewire\Dashboard::class)->name('dashboard');
+    Route::get('/profile', UserProfile::class)->name('profile');
     
     // UMKM Management Routes
     Route::get('/modal-page', ModalPage::class)->name('modal.page');
@@ -50,8 +51,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/incomes', IncomePage::class)->name('incomes');
     Route::get('/expenditures', ExpenditurePage::class)->name('expenditures');
     
+    // Analysis Routes
+    Route::get('/what-if-analysis', WhatIfAnalysis::class)->name('what.if.analysis');
+    
     // Reports Routes
-    Route::get('/laporan-harian', ReportharianPage::class)->name('laporan.harian');
     Route::get('/laporan-bulanan', ReportbulananList::class)->name('laporan.bulanan');
     Route::get('/report-tahunan', Reporttahunan::class)->name('laporan.tahunan');
     Route::get('/profit-loss', ProfitLoss::class)->name('profit.loss');

@@ -3,7 +3,7 @@
 namespace App\Livewire\Reports;
 
 use Livewire\Component;
-use App\Models\Reportharian;
+
 use App\Models\Capitalearly;
 use App\Models\Capital;
 use App\Models\FixedCost;

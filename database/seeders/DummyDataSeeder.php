@@ -5,7 +5,6 @@ namespace Database\Seeders;
 use Illuminate\Database\Seeder;
 use App\Models\Income;
 use App\Models\Expenditure;
-use App\Models\Reportharian;
 use Carbon\Carbon;
 
 class DummyDataSeeder extends Seeder
@@ -26,8 +25,9 @@ class DummyDataSeeder extends Seeder
                     'user_id' => $userId,
                     'tanggal' => $startDate->toDateString(),
                     'produk' => $produk,
-                    'jumlah_terjual' => rand(5, 30), // porsi terjual
+                    'jumlah_terjual' => rand(5, 50), // porsi terjual
                     'harga_satuan' => $produk === 'Bakso' ? 15000 : 12000,
+                    'biaya_per_unit' => $produk === 'Bakso' ? 11000 : 8000,
                 ]);
             }
 
@@ -47,22 +47,11 @@ class DummyDataSeeder extends Seeder
                     'user_id' => $userId,
                     'tanggal' => $startDate->toDateString(),
                     'keterangan' => $pengeluaranList[array_rand($pengeluaranList)],
-                    'jumlah' => rand(10000, 150000),
+                    'jumlah' => rand(20000, 150000),
                 ]);
             }
 
-            // Report Harian (data terpisah)
-            $uangMasuk = rand(200000, 600000);
-            $uangKeluar = rand(50000, 200000);
-
-            Reportharian::create([
-                'user_id' => $userId,
-                'tanggal' => $startDate->toDateString(),
-                'keterangan' => 'Ringkasan Harian',
-                'uang_masuk' => $uangMasuk,
-                'uang_keluar' => $uangKeluar,
-                'saldo' => $uangMasuk - $uangKeluar,
-            ]);
+            
 
             $startDate->addDay();
         }

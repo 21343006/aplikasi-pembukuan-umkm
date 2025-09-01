@@ -30,11 +30,7 @@
                     </div>
                     <div class="col-md-3 col-sm-6 mb-2">
                         <label for="filterYear" class="form-label">Lihat Data Tahun</label>
-                        <select wire:model.live="filterYear" class="form-select @error('filterYear') is-invalid @enderror">
-                            @foreach($this->getAvailableYears() as $year)
-                                <option value="{{ $year }}">{{ $year }}</option>
-                            @endforeach
-                        </select>
+                        <input type="number" wire:model.live="filterYear" class="form-control @error('filterYear') is-invalid @enderror" placeholder="Tahun" min="2000" max="2099">
                     </div>
                     <div class="col-md-3 col-sm-6 mb-2 d-flex align-items-end">
                         <button class="btn btn-info w-100" wire:click="copyFromPreviousMonth" title="Salin data dari bulan sebelumnya">

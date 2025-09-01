@@ -179,31 +179,34 @@
 
                 {{-- Jika bulan & tahun sudah dipilih --}}
                 @if ($filterMonth && $filterYear)
-                    <div class="d-flex justify-content-between align-items-center pt-4">
-                        <h5 class="card-title mb-0">
-                            <i class="bi bi-table"></i> Data Pengeluaran - {{ $this->monthName }} {{ $filterYear }}
-                            @if ($total > 0)
-                                <span class="badge bg-danger ms-2">
-                                    Total: Rp {{ number_format($total, 0, ',', '.') }}
-                                </span>
-                            @endif
-                        </h5>
-                        <div class="d-flex align-items-center gap-3">
-                            {{-- Dropdown untuk memilih jumlah data per halaman --}}
-                            <div class="d-flex align-items-center">
-                                <label class="form-label mb-0 me-2">Tampilkan:</label>
-                                <select wire:model.live="perPage" class="form-select form-select-sm"
-                                    style="width: auto;">
-                                    <option value="5">5</option>
-                                    <option value="10">10</option>
-                                    <option value="25">25</option>
-                                    <option value="50">50</option>
-                                </select>
-                                <span class="ms-2 text-muted">data per halaman</span>
+                    <div class="pt-4">
+                        <div class="row gy-2 gx-2 align-items-center">
+                            <div class="col-lg-6">
+                                <h5 class="card-title mb-0">
+                                    <i class="bi bi-table"></i> Data Pengeluaran - {{ $this->monthName }} {{ $filterYear }}
+                                    @if ($total > 0)
+                                        <span class="badge bg-danger ms-2">
+                                            Total: Rp {{ number_format($total, 0, ',', '.') }}
+                                        </span>
+                                    @endif
+                                </h5>
                             </div>
-                            <button class="btn btn-primary" wire:click="openModal">
-                                <i class="bi bi-plus-circle"></i> Tambah Data
-                            </button>
+                            <div class="col-lg-6">
+                                <div class="d-flex align-items-center justify-content-lg-end gap-2">
+                                    <div class="d-flex align-items-center">
+                                        <label class="form-label mb-0 me-2 d-none d-md-block">Tampilkan:</label>
+                                        <select wire:model.live="perPage" class="form-select form-select-sm" style="width: auto;">
+                                            <option value="5">5</option>
+                                            <option value="10">10</option>
+                                            <option value="25">25</option>
+                                            <option value="50">50</option>
+                                        </select>
+                                    </div>
+                                    <button class="btn btn-primary w-100 w-md-auto" wire:click="openModal">
+                                        <i class="bi bi-plus-circle"></i> Tambah Data
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -273,8 +276,8 @@
                         </div>
 
                         {{-- Pagination dengan informasi data --}}
-                        <div class="d-flex justify-content-between align-items-center mt-3">
-                            <div class="text-muted">
+                        <div class="d-sm-flex justify-content-sm-between align-items-sm-center mt-3">
+                            <div class="text-muted text-center text-sm-start mb-2 mb-sm-0">
                                 <small>
                                     Menampilkan {{ $paginatedExpenditures->firstItem() ?? 0 }}
                                     sampai {{ $paginatedExpenditures->lastItem() ?? 0 }}
@@ -284,7 +287,7 @@
 
                             {{-- Custom Pagination Links --}}
                             @if ($paginatedExpenditures->hasPages())
-                                <nav aria-label="Pagination Navigation">
+                                <nav aria-label="Pagination Navigation" class="d-flex justify-content-center">
                                     <ul class="pagination pagination-sm mb-0">
                                         {{-- Previous Page Link --}}
                                         @if ($paginatedExpenditures->onFirstPage())

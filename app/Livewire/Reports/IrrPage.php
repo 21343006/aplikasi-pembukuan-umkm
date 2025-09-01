@@ -142,48 +142,96 @@ class IrrPage extends Component
     private function calculateIRR()
     {
         try {
-            // Use yearly cash flows for IRR calculation
-            $this->irr = $this->computeIRR($this->yearlyCashFlows);
+            // Gunakan cash flow tahunan untuk perhitungan IRR
+            $this->irr = $this->computeIRR($this->yearlyCashFlows, $this->discountRate / 100);
         } catch (\Exception $e) {
             $this->irr = null;
             Log::error('Error calculating IRR: ' . $e->getMessage());
         }
     }
 
-    private function computeIRR($cashFlows, $guess = 0.1, $tolerance = 0.0001, $maxIterations = 1000)
+    /**
+     * Hitung IRR menggunakan metode robust (pencarian bracket + bisection).
+     * Mengembalikan IRR dalam persen atau null jika tidak ditemukan.
+     */
+    private function computeIRR(array $cashFlows, float $preferredGuess = 0.1, float $tolerance = 1e-7, int $maxIterations = 200): ?float
     {
-        $rate = $guess;
-        
-        for ($i = 0; $i < $maxIterations; $i++) {
-            $npv = 0;
-            $npvDerivative = 0;
-            
-            foreach ($cashFlows as $period => $cashFlow) {
-                if ($period == 0) {
-                    $npv += $cashFlow;
-                } else {
-                    $discountFactor = pow(1 + $rate, $period);
-                    $npv += $cashFlow / $discountFactor;
-                    $npvDerivative -= ($period * $cashFlow) / pow(1 + $rate, $period + 1);
-                }
-            }
-            
-            if (abs($npv) < $tolerance) {
-                return $rate * 100; // Return as percentage
-            }
-            
-            if ($npvDerivative == 0) {
-                break;
-            }
-            
-            $rate = $rate - ($npv / $npvDerivative);
-            
-            // Prevent extreme values
-            if ($rate < -0.99) $rate = -0.99;
-            if ($rate > 10) $rate = 10;
+        // Harus ada minimal satu arus kas negatif dan positif
+        $hasPositive = false; $hasNegative = false;
+        foreach ($cashFlows as $cf) {
+            if ($cf > 0) $hasPositive = true;
+            if ($cf < 0) $hasNegative = true;
         }
-        
-        return null; // IRR not found
+        if (!($hasPositive && $hasNegative)) {
+            return null;
+        }
+
+        // Grid untuk mencari bracket sign-change NPV
+        $rateGrid = [-0.99, -0.5, -0.2, -0.1, -0.05, 0.0, 0.02, 0.05, 0.1, 0.15, 0.2, 0.3, 0.5, 1.0, 2.0, 5.0, 10.0];
+        $npvAt = [];
+        foreach ($rateGrid as $r) {
+            $npvAt[(string)$r] = $this->npvAtRate($cashFlows, $r);
+        }
+
+        // Cari semua bracket yang memiliki perubahan tanda NPV
+        $brackets = [];
+        for ($i = 0; $i < count($rateGrid) - 1; $i++) {
+            $ra = $rateGrid[$i];
+            $rb = $rateGrid[$i + 1];
+            $fa = $npvAt[(string)$ra];
+            $fb = $npvAt[(string)$rb];
+            if ($fa === 0.0) { return $ra * 100; }
+            if ($fb === 0.0) { return $rb * 100; }
+            if ($fa * $fb < 0) {
+                $brackets[] = [$ra, $rb];
+            }
+        }
+
+        if (empty($brackets)) {
+            return null;
+        }
+
+        // Pilih bracket yang paling dekat dengan tebakan (discount rate), jika ada
+        $target = $preferredGuess;
+        $bestBracket = $brackets[0];
+        $bestDist = PHP_FLOAT_MAX;
+        foreach ($brackets as [$a, $b]) {
+            $mid = ($a + $b) / 2;
+            $dist = abs($mid - $target);
+            if ($dist < $bestDist) { $bestDist = $dist; $bestBracket = [$a, $b]; }
+        }
+
+        list($low, $high) = $bestBracket;
+        $flowLow = $this->npvAtRate($cashFlows, $low);
+        $flowHigh = $this->npvAtRate($cashFlows, $high);
+
+        // Bisection
+        for ($iter = 0; $iter < $maxIterations; $iter++) {
+            $mid = ($low + $high) / 2.0;
+            $fmid = $this->npvAtRate($cashFlows, $mid);
+            if (abs($fmid) < $tolerance || abs($high - $low) < $tolerance) {
+                return $mid * 100.0;
+            }
+            if ($flowLow * $fmid < 0) {
+                $high = $mid;
+                $flowHigh = $fmid;
+            } else {
+                $low = $mid;
+                $flowLow = $fmid;
+            }
+        }
+
+        return $mid * 100.0;
+    }
+
+    private function npvAtRate(array $cashFlows, float $rate): float
+    {
+        $npv = 0.0;
+        foreach ($cashFlows as $t => $cf) {
+            if ($t === 0) { $npv += $cf; continue; }
+            $npv += $cf / pow(1.0 + $rate, $t);
+        }
+        return (float) $npv;
     }
 
     private function calculateNPV()

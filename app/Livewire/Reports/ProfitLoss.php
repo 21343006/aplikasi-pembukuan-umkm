@@ -6,6 +6,7 @@ use Livewire\Component;
 use Livewire\Attributes\Title;
 use App\Models\Income;
 use App\Models\Expenditure;
+use App\Models\FixedCost;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
@@ -101,6 +102,9 @@ class ProfitLoss extends Component
     public function updatedSelectedYear()
     {
         try {
+            // Normalize input (trim spaces and ensure string form)
+            $this->selectedYear = trim((string) $this->selectedYear);
+
             if ($this->reportType === 'monthly') {
                 $this->selectedMonth = '';
             }
@@ -208,6 +212,12 @@ class ProfitLoss extends Component
                     ->whereYear('tanggal', $year)
                     ->sum('jumlah');
 
+                $totalFixedCost = (float) FixedCost::where('user_id', Auth::id())
+                    ->whereYear('tanggal', $year)
+                    ->sum('nominal');
+
+                $totalExpenditure += $totalFixedCost;
+
                 $profit = $totalIncome - $totalExpenditure;
                 $margin = $totalIncome > 0 ? ($profit / $totalIncome) * 100 : 0;
 
@@ -251,14 +261,22 @@ class ProfitLoss extends Component
                     ->whereYear('tanggal', $year)
                     ->sum('jumlah');
 
-                $profit = $monthIncome - $monthExpenditure;
+                $monthFixedCost = (float) FixedCost::where('user_id', Auth::id())
+                    ->whereMonth('tanggal', $month)
+                    ->whereYear('tanggal', $year)
+                    ->sum('nominal');
+
+                $monthTotalExpenditure = $monthExpenditure + $monthFixedCost;
+
+                $profit = $monthIncome - $monthTotalExpenditure;
                 $margin = $monthIncome > 0 ? ($profit / $monthIncome) * 100 : 0;
 
                 $this->monthlyData[] = [
                     'month' => $month,
                     'month_name' => $this->monthNames[$month],
                     'pendapatan' => $monthIncome,
-                    'pengeluaran' => $monthExpenditure,
+                    'pengeluaran' => $monthTotalExpenditure,
+                    'biaya_tetap' => $monthFixedCost,
                     'laba_rugi' => $profit,
                     'margin' => $margin,
                 ];
@@ -304,6 +322,14 @@ class ProfitLoss extends Component
                 });
 
                 $dayExpenditure = $expenditures->get($day, collect())->sum('jumlah');
+
+                $dayFixedCost = FixedCost::where('user_id', Auth::id())
+                    ->whereYear('tanggal', $year)
+                    ->whereMonth('tanggal', $month)
+                    ->whereDay('tanggal', $day)
+                    ->sum('nominal');
+
+                $dayExpenditure += $dayFixedCost;
 
                 if ($dayIncome > 0 || $dayExpenditure > 0) {
                     $profit = $dayIncome - $dayExpenditure;
@@ -713,28 +739,34 @@ class ProfitLoss extends Component
                 return 0.0;
             }
 
-            $query = Expenditure::where('user_id', Auth::id());
+            $expenditureQuery = Expenditure::where('user_id', Auth::id());
+            $fixedCostQuery = FixedCost::where('user_id', Auth::id());
 
             switch ($this->reportType) {
                 case 'yearly':
                     if (!empty($this->selectedYear) && is_numeric($this->selectedYear)) {
-                        $query->whereYear('tanggal', (int)$this->selectedYear);
+                        $expenditureQuery->whereYear('tanggal', (int)$this->selectedYear);
+                        $fixedCostQuery->whereYear('tanggal', (int)$this->selectedYear);
                     }
                     break;
 
                 case 'monthly':
                     if (!empty($this->selectedYear) && is_numeric($this->selectedYear)) {
-                        $query->whereYear('tanggal', (int)$this->selectedYear);
+                        $expenditureQuery->whereYear('tanggal', (int)$this->selectedYear);
+                        $fixedCostQuery->whereYear('tanggal', (int)$this->selectedYear);
 
                         if (!empty($this->selectedMonth) && is_numeric($this->selectedMonth)) {
-                            $query->whereMonth('tanggal', (int)$this->selectedMonth);
+                            $expenditureQuery->whereMonth('tanggal', (int)$this->selectedMonth);
+                            $fixedCostQuery->whereMonth('tanggal', (int)$this->selectedMonth);
                         }
                     }
                     break;
             }
 
-            $total = $query->sum('jumlah') ?? 0;
-            return (float) $total;
+            $totalExpenditure = $expenditureQuery->sum('jumlah') ?? 0;
+            $totalFixedCost = $fixedCostQuery->sum('nominal') ?? 0;
+
+            return (float) ($totalExpenditure + $totalFixedCost);
         } catch (\Exception $e) {
             Log::error('Error calculating total pengeluaran: ' . $e->getMessage());
             return 0.0;
@@ -765,25 +797,58 @@ class ProfitLoss extends Component
             $currentYear = (int) $this->selectedYear;
             $previousYear = $currentYear - 1;
 
-            $currentIncome = Income::where('user_id', Auth::id())
-                ->whereYear('tanggal', $currentYear)
-                ->get()
-                ->sum(function ($income) {
-                    return ((float) ($income->jumlah_terjual ?? 0)) * ((float) ($income->harga_satuan ?? 0));
-                });
+            // Coba ambil dari yearlyData agar konsisten dengan tampilan
+            $currentIncome = null;
+            $previousIncome = null;
 
-            $previousIncome = Income::where('user_id', Auth::id())
-                ->whereYear('tanggal', $previousYear)
-                ->get()
-                ->sum(function ($income) {
-                    return ((float) ($income->jumlah_terjual ?? 0)) * ((float) ($income->harga_satuan ?? 0));
-                });
-
-            if ($previousIncome > 0) {
-                return (($currentIncome - $previousIncome) / $previousIncome) * 100;
+            foreach ($this->yearlyData as $row) {
+                $rowYear = isset($row['year']) ? (int) $row['year'] : null;
+                if ($rowYear === $currentYear) {
+                    $currentIncome = (float) ($row['pendapatan'] ?? 0);
+                } elseif ($rowYear === $previousYear) {
+                    $previousIncome = (float) ($row['pendapatan'] ?? 0);
+                }
             }
 
-            return null;
+            // Jika yearlyData belum tersedia (mis. saat awal), fallback ke query
+            if ($currentIncome === null) {
+                $currentIncome = Income::where('user_id', Auth::id())
+                    ->whereYear('tanggal', $currentYear)
+                    ->get()
+                    ->sum(function ($income) {
+                        $computed = ((float) ($income->jumlah_terjual ?? 0)) * ((float) ($income->harga_satuan ?? 0));
+                        if ($computed <= 0 && isset($income->total)) {
+                            return (float) $income->total;
+                        }
+                        return (float) $computed;
+                    });
+            }
+            if ($previousIncome === null) {
+                $previousIncome = Income::where('user_id', Auth::id())
+                    ->whereYear('tanggal', $previousYear)
+                    ->get()
+                    ->sum(function ($income) {
+                        $computed = ((float) ($income->jumlah_terjual ?? 0)) * ((float) ($income->harga_satuan ?? 0));
+                        if ($computed <= 0 && isset($income->total)) {
+                            return (float) $income->total;
+                        }
+                        return (float) $computed;
+                    });
+            }
+
+            // Tangani kasus tepi agar selalu ada nilai yang ditampilkan
+            if ($previousIncome > 0) {
+                return (($currentIncome - $previousIncome) / $previousIncome) * 100.0;
+            }
+
+            // Jika tahun sebelumnya 0:
+            // - Jika tahun sekarang juga 0: pertumbuhan 0%
+            // - Jika tahun sekarang > 0: anggap pertumbuhan 100% (dari basis 0)
+            if ($previousIncome == 0) {
+                return $currentIncome > 0 ? 100.0 : 0.0;
+            }
+
+            return 0.0;
         } catch (\Exception $e) {
             Log::error('Error calculating growth rate: ' . $e->getMessage());
             return null;
@@ -828,34 +893,31 @@ class ProfitLoss extends Component
             $csvHeaders = [
                 'Content-Type' => 'text/csv; charset=UTF-8',
                 'Content-Disposition' => 'attachment; filename="' . $fileName . '"',
-                'Cache-Control' => 'must-revalidate, post-check=0, pre-check=0',
-                'Expires' => '0',
-                'Pragma' => 'public',
             ];
 
             $callback = function () use ($data, $headers) {
                 $file = fopen('php://output', 'w');
 
                 fprintf($file, chr(0xEF) . chr(0xBB) . chr(0xBF));
-                fputcsv($file, $headers, ';');
+                fputcsv($file, $headers);
 
                 foreach ($data as $row) {
                     if ($this->reportType === 'yearly') {
                         fputcsv($file, [
                             $row['year'],
-                            number_format($row['pendapatan'], 0, ',', '.'),
-                            number_format($row['pengeluaran'], 0, ',', '.'),
-                            number_format($row['laba_rugi'], 0, ',', '.'),
-                            number_format($row['margin'], 2, ',', '.') . '%'
-                        ], ';');
+                            $row['pendapatan'],
+                            $row['pengeluaran'],
+                            $row['laba_rugi'],
+                            $row['margin']
+                        ]);
                     } else {
                         fputcsv($file, [
                             $row['month_name'],
-                            number_format($row['pendapatan'], 0, ',', '.'),
-                            number_format($row['pengeluaran'], 0, ',', '.'),
-                            number_format($row['laba_rugi'], 0, ',', '.'),
-                            number_format($row['margin'], 2, ',', '.') . '%'
-                        ], ';');
+                            $row['pendapatan'],
+                            $row['pengeluaran'],
+                            $row['laba_rugi'],
+                            $row['margin']
+                        ]);
                     }
                 }
 

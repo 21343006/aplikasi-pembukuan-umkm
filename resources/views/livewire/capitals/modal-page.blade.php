@@ -1,4 +1,3 @@
-<!-- resources/views/livewire/capitals/modal-page.blade.php -->
 <div>
     <main id="main" class="main">
         <div class="pagetitle">
@@ -10,6 +9,7 @@
                     <li class="breadcrumb-item">
                         <a href="#" class="text-muted">Dashboard</a>
                     </li>
+                    <li class="breadcrumb-item">Modal</li>
                     <li class="breadcrumb-item active">Pengelolaan Modal</li>
                 </ol>
             </nav>
@@ -42,7 +42,6 @@
                             <div class="col-md-3">
                                 <strong>Data:</strong><br>
                                 <small>Total: {{ $tableStructure['total_capitals'] }} records</small><br>
-                                <small>Filter: {{ $tableStructure['filter_active'] ? 'Aktif' : 'Tidak Aktif' }}</small>
                             </div>
                             <div class="col-md-6">
                                 <button class="btn btn-sm btn-outline-info" wire:click="refreshTableStructure()">
@@ -63,191 +62,117 @@
                 </div>
 
                 <div class="card-body p-4">
-                    {{-- Filter Section --}}
-                    <div class="filter-section mb-4 p-4 bg-light rounded-4">
-                        <div class="row g-3">
-                            <div class="col-md-3">
-                                <label for="filterMonth" class="form-label fw-semibold">
-                                    <i class="bi bi-calendar-month me-1 text-primary"></i>Pilih Bulan
-                                </label>
-                                <select wire:model.live="filterMonth" class="form-select shadow-sm">
-                                    <option value="">-- Pilih Bulan --</option>
-                                    @foreach($monthNames as $key => $month)
-                                        <option value="{{ $key }}">{{ $month }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
-                            <div class="col-md-3">
-                                <label for="filterYear" class="form-label fw-semibold">
-                                    <i class="bi bi-calendar-year me-1 text-primary"></i>Pilih Tahun
-                                </label>
-                                <select wire:model.live="filterYear" class="form-select shadow-sm">
-                                    <option value="">-- Pilih Tahun --</option>
-                                    @foreach($availableYears as $year)
-                                        <option value="{{ $year }}">{{ $year }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
-                            @if ($hasJenisColumn)
-                                <div class="col-md-3">
-                                    <label for="filterJenis" class="form-label fw-semibold">
-                                        <i class="bi bi-funnel me-1 text-primary"></i>Jenis Transaksi
-                                    </label>
-                                    <select wire:model.live="filterJenis" class="form-select shadow-sm">
-                                        <option value="">-- Semua Jenis --</option>
-                                        <option value="masuk">Modal Masuk</option>
-                                        <option value="keluar">Modal Keluar</option>
-                                    </select>
+                    {{-- Summary Cards --}}
+                    <div class="row g-4 mb-4">
+                        @if ($hasJenisColumn)
+                            {{-- Modal Masuk Card --}}
+                            <div class="col-md-3 col-sm-6">
+                                <div class="summary-card bg-gradient-success">
+                                    <div class="summary-content">
+                                        <div class="summary-info">
+                                            <h6 class="fw-light mb-2 opacity-75">Modal Masuk</h6>
+                                            <h4 class="fw-bold mb-0">Rp {{ number_format($totalMasuk, 0, ',', '.') }}</h4>
+                                        </div>
+                                        <div class="summary-icon">
+                                            <i class="bi bi-arrow-up-circle fs-4"></i>
+                                        </div>
+                                    </div>
                                 </div>
-                            @endif
-                            @if (($filterMonth && $filterYear) || $filterJenis)
-                                <div class="col-md-3 d-flex align-items-end">
-                                    <button class="btn btn-outline-secondary shadow-sm w-100" wire:click="clearFilters">
-                                        <i class="bi bi-arrow-clockwise me-1"></i>Reset Filter
-                                    </button>
+                            </div>
+                            {{-- Modal Keluar Card --}}
+                            <div class="col-md-3 col-sm-6">
+                                <div class="summary-card bg-gradient-danger">
+                                    <div class="summary-content">
+                                        <div class="summary-info">
+                                            <h6 class="fw-light mb-2 opacity-75">Modal Keluar</h6>
+                                            <h4 class="fw-bold mb-0">Rp {{ number_format($totalKeluar, 0, ',', '.') }}</h4>
+                                        </div>
+                                        <div class="summary-icon">
+                                            <i class="bi bi-arrow-down-circle fs-4"></i>
+                                        </div>
+                                    </div>
                                 </div>
-                            @endif
+                            </div>
+                        @else
+                            {{-- Total Modal Card (Backward Compatibility) --}}
+                            <div class="col-md-4 col-sm-6">
+                                <div class="summary-card bg-gradient-primary">
+                                    <div class="summary-content">
+                                        <div class="summary-info">
+                                            <h6 class="fw-light mb-2 opacity-75">Total Modal</h6>
+                                            <h4 class="fw-bold mb-0">Rp {{ number_format($totalMasuk, 0, ',', '.') }}</h4>
+                                        </div>
+                                        <div class="summary-icon">
+                                            <i class="bi bi-wallet2 fs-4"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        @endif
+                        
+                        {{-- Saldo Modal Card --}}
+                        <div class="col-md-3 col-sm-6">
+                            <div class="summary-card bg-gradient-{{ $saldo >= 0 ? 'info' : 'warning' }}">
+                                <div class="summary-content">
+                                    <div class="summary-info">
+                                        <h6 class="fw-light mb-2 opacity-75">
+                                            {{ $hasJenisColumn ? 'Saldo Modal' : 'Total Modal' }}
+                                        </h6>
+                                        <h4 class="fw-bold mb-0">Rp {{ number_format($saldo, 0, ',', '.') }}</h4>
+                                    </div>
+                                    <div class="summary-icon">
+                                        <i class="bi bi-{{ $saldo >= 0 ? 'check-circle' : 'exclamation-triangle' }} fs-4"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        {{-- Action Buttons Card --}}
+                        <div class="col-md-3 col-sm-6">
+                            <div class="card border-0 shadow-lg h-100 bg-white">
+                                <div class="card-body p-4 d-flex flex-column justify-content-center">
+                                    @if ($hasJenisColumn)
+                                        <button class="btn btn-success shadow-sm mb-2 btn-hover" wire:click="openModal('masuk')">
+                                            <i class="bi bi-plus-circle me-2"></i>Modal Masuk
+                                        </button>
+                                        <button class="btn btn-danger shadow-sm btn-hover" wire:click="openModal('keluar')">
+                                            <i class="bi bi-dash-circle me-2"></i>Modal Keluar
+                                        </button>
+                                    @else
+                                        <button class="btn btn-primary shadow-sm btn-hover" wire:click="openModal('masuk')">
+                                            <i class="bi bi-plus-circle me-2"></i>Tambah Modal
+                                        </button>
+                                        <div class="alert alert-warning mt-2 mb-0 border-0 p-2">
+                                            <small>
+                                                <i class="bi bi-info-circle me-1"></i>
+                                                Mode kompatibilitas aktif
+                                            </small>
+                                        </div>
+                                    @endif
+                                </div>
+                            </div>
                         </div>
                     </div>
 
-                    {{-- Summary Cards --}}
-                    @if ($filterMonth && $filterYear)
-                        <div class="row g-4 mb-4">
-                            @if ($hasJenisColumn)
-                                {{-- Modal Masuk Card --}}
-                                <div class="col-md-3 col-sm-6">
-                                    <div class="summary-card bg-gradient-success">
-                                        <div class="summary-content">
-                                            <div class="summary-info">
-                                                <h6 class="fw-light mb-2 opacity-75">Modal Masuk</h6>
-                                                <h4 class="fw-bold mb-0">Rp {{ number_format($totalMasuk, 0, ',', '.') }}</h4>
-                                            </div>
-                                            <div class="summary-icon">
-                                                <i class="bi bi-arrow-up-circle fs-4"></i>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                {{-- Modal Keluar Card --}}
-                                <div class="col-md-3 col-sm-6">
-                                    <div class="summary-card bg-gradient-danger">
-                                        <div class="summary-content">
-                                            <div class="summary-info">
-                                                <h6 class="fw-light mb-2 opacity-75">Modal Keluar</h6>
-                                                <h4 class="fw-bold mb-0">Rp {{ number_format($totalKeluar, 0, ',', '.') }}</h4>
-                                            </div>
-                                            <div class="summary-icon">
-                                                <i class="bi bi-arrow-down-circle fs-4"></i>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            @else
-                                {{-- Total Modal Card (Backward Compatibility) --}}
-                                <div class="col-md-4 col-sm-6">
-                                    <div class="summary-card bg-gradient-primary">
-                                        <div class="summary-content">
-                                            <div class="summary-info">
-                                                <h6 class="fw-light mb-2 opacity-75">Total Modal</h6>
-                                                <h4 class="fw-bold mb-0">Rp {{ number_format($totalMasuk, 0, ',', '.') }}</h4>
-                                            </div>
-                                            <div class="summary-icon">
-                                                <i class="bi bi-wallet2 fs-4"></i>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            @endif
-                            
-                            {{-- Saldo Modal Card --}}
-                            <div class="col-md-3 col-sm-6">
-                                <div class="summary-card bg-gradient-{{ $saldo >= 0 ? 'info' : 'warning' }}">
-                                    <div class="summary-content">
-                                        <div class="summary-info">
-                                            <h6 class="fw-light mb-2 opacity-75">
-                                                {{ $hasJenisColumn ? 'Saldo Modal' : 'Total Modal' }}
-                                            </h6>
-                                            <h4 class="fw-bold mb-0">Rp {{ number_format($saldo, 0, ',', '.') }}</h4>
-                                        </div>
-                                        <div class="summary-icon">
-                                            <i class="bi bi-{{ $saldo >= 0 ? 'check-circle' : 'exclamation-triangle' }} fs-4"></i>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            {{-- Action Buttons Card --}}
-                            <div class="col-md-3 col-sm-6">
-                                <div class="card border-0 shadow-lg h-100 bg-white">
-                                    <div class="card-body p-4 d-flex flex-column justify-content-center">
-                                        @if ($hasJenisColumn)
-                                            <button class="btn btn-success shadow-sm mb-2 btn-hover" wire:click="openModal('masuk')">
-                                                <i class="bi bi-plus-circle me-2"></i>Modal Masuk
-                                            </button>
-                                            <button class="btn btn-danger shadow-sm btn-hover" wire:click="openModal('keluar')">
-                                                <i class="bi bi-dash-circle me-2"></i>Modal Keluar
-                                            </button>
-                                        @else
-                                            <button class="btn btn-primary shadow-sm btn-hover" wire:click="openModal('masuk')">
-                                                <i class="bi bi-plus-circle me-2"></i>Tambah Modal
-                                            </button>
-                                            <div class="alert alert-warning mt-2 mb-0 border-0 p-2">
-                                                <small>
-                                                    <i class="bi bi-info-circle me-1"></i>
-                                                    Mode kompatibilitas aktif
-                                                </small>
-                                            </div>
-                                        @endif
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    @endif
-
-                    {{-- Data Table Section --}}
-                    @if ($filterMonth && $filterYear)
-                        <div class="data-section">
-                            <div class="d-flex justify-content-between align-items-center mb-4">
-                                <div>
-                                    <h5 class="card-title mb-1 fw-bold text-dark">
-                                        <i class="bi bi-table me-2 text-primary"></i>Data Modal - {{ $this->monthName }} {{ $filterYear }}
-                                    </h5>
-                                    @if ($filterJenis && $hasJenisColumn)
-                                        <small class="text-muted">
-                                            <i class="bi bi-filter me-1"></i>Filter: {{ $filterJenis == 'masuk' ? 'Modal Masuk' : 'Modal Keluar' }}
-                                        </small>
-                                    @endif
-                                </div>
-                                @if (count($capitals) > 0)
-                                    <div class="badge bg-primary fs-6 px-3 py-2">
-                                        <i class="bi bi-list-ol me-1"></i>{{ count($capitals) }} Transaksi
-                                    </div>
-                                @endif
-                            </div>
-
-                            @if (count($capitals) > 0)
+                    {{-- Tabel Modal Masuk dan Keluar (hanya jika ada kolom jenis) --}}
+                    @if ($hasJenisColumn)
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <h5 class="card-title mb-3 fw-bold text-dark">
+                                    <i class="bi bi-arrow-up-circle me-2 text-success"></i>Modal Masuk
+                                </h5>
                                 <div class="table-responsive shadow-sm rounded-4 overflow-hidden">
                                     <table class="table table-hover mb-0 modern-table">
                                         <thead class="table-dark">
                                             <tr>
                                                 <th class="border-0 py-3"><i class="bi bi-hash me-1"></i>No</th>
                                                 <th class="border-0 py-3"><i class="bi bi-calendar-date me-1"></i>Tanggal</th>
-                                                <th class="border-0 py-3"><i class="bi bi-person me-1"></i>User</th>
-                                                @if ($tableStructure['has_keperluan'])
-                                                    <th class="border-0 py-3"><i class="bi bi-clipboard me-1"></i>Keperluan</th>
-                                                @endif
-                                                @if ($tableStructure['has_keterangan'])
-                                                    <th class="border-0 py-3"><i class="bi bi-journal-text me-1"></i>Keterangan</th>
-                                                @endif
-                                                @if ($hasJenisColumn)
-                                                    <th class="border-0 py-3"><i class="bi bi-tags me-1"></i>Jenis</th>
-                                                @endif
                                                 <th class="border-0 py-3"><i class="bi bi-currency-dollar me-1"></i>Nominal</th>
                                                 <th class="border-0 py-3 text-center"><i class="bi bi-gear me-1"></i>Aksi</th>
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            @foreach ($capitals as $index => $capital)
+                                            @forelse ($modalMasuk as $index => $capital)
                                                 <tr class="table-row-hover">
                                                     <td class="py-3 fw-semibold">
                                                         <span class="badge bg-light text-dark">{{ $index + 1 }}</span>
@@ -259,50 +184,8 @@
                                                         </div>
                                                     </td>
                                                     <td class="py-3">
-                                                        <div class="d-flex align-items-center">
-                                                            <div class="avatar-circle me-2">
-                                                                {{ strtoupper(substr(auth()->user()->name ?? 'U', 0, 1)) }}
-                                                            </div>
-                                                            <span class="fw-medium">{{ auth()->user()->name ?? 'Unknown' }}</span>
-                                                        </div>
-                                                    </td>
-                                                    @if ($tableStructure['has_keperluan'])
-                                                        <td class="py-3">
-                                                            <span class="{{ isset($capital['keperluan']) && $capital['keperluan'] ? 'text-dark' : 'text-muted' }}">
-                                                                {{ $capital['keperluan'] ?? '-' }}
-                                                            </span>
-                                                        </td>
-                                                    @endif
-                                                    @if ($tableStructure['has_keterangan'])
-                                                        <td class="py-3">
-                                                            <span class="{{ isset($capital['keterangan']) && $capital['keterangan'] ? 'text-dark' : 'text-muted' }}">
-                                                                @if(isset($capital['keterangan']) && $capital['keterangan'])
-                                                                    {{ strlen($capital['keterangan']) > 30 ? substr($capital['keterangan'], 0, 30) . '...' : $capital['keterangan'] }}
-                                                                @else
-                                                                    -
-                                                                @endif
-                                                            </span>
-                                                        </td>
-                                                    @endif
-                                                    @if ($hasJenisColumn)
-                                                        <td class="py-3">
-                                                            @php
-                                                                $jenis = $capital['jenis'] ?? 'masuk';
-                                                            @endphp
-                                                            <span class="badge bg-{{ $jenis == 'masuk' ? 'success' : 'danger' }} px-3 py-2">
-                                                                <i class="bi bi-{{ $jenis == 'masuk' ? 'arrow-up' : 'arrow-down' }} me-1"></i>
-                                                                {{ ucfirst($jenis) }}
-                                                            </span>
-                                                        </td>
-                                                    @endif
-                                                    <td class="py-3">
-                                                        @php
-                                                            $jenis = $hasJenisColumn ? ($capital['jenis'] ?? 'masuk') : 'masuk';
-                                                            $color = $jenis == 'masuk' ? 'success' : 'danger';
-                                                            $sign = $jenis == 'masuk' ? '+' : '-';
-                                                        @endphp
-                                                        <span class="fw-bold text-{{ $color }} fs-6">
-                                                            {{ $sign }} Rp {{ number_format($capital['nominal'], 0, ',', '.') }}
+                                                        <span class="fw-bold text-success fs-6">
+                                                            + Rp {{ number_format($capital['nominal'], 0, ',', '.') }}
                                                         </span>
                                                     </td>
                                                     <td class="py-3 text-center">
@@ -319,69 +202,235 @@
                                                         </div>
                                                     </td>
                                                 </tr>
-                                            @endforeach
+                                            @empty
+                                                <tr>
+                                                    <td colspan="4" class="text-center py-4 text-muted">Tidak ada data modal masuk.</td>
+                                                </tr>
+                                            @endforelse
                                         </tbody>
-                                        <tfoot class="table-dark">
-                                            <tr>
-                                                @php
-                                                    $colspan = 3; // No, Tanggal, User
-                                                    if ($tableStructure['has_keperluan']) $colspan++;
-                                                    if ($tableStructure['has_keterangan']) $colspan++;
-                                                    if ($hasJenisColumn) $colspan++;
-                                                @endphp
-                                                <th colspan="{{ $colspan }}" class="text-end border-0 py-3 fw-bold">
-                                                    <i class="bi bi-calculator me-2"></i>{{ $hasJenisColumn ? 'Saldo Modal:' : 'Total Modal:' }}
-                                                </th>
-                                                <th class="text-{{ $saldo >= 0 ? 'success' : 'danger' }} border-0 py-3">
-                                                    <span class="fs-5 fw-bold">Rp {{ number_format($saldo, 0, ',', '.') }}</span>
-                                                </th>
-                                                <th class="border-0"></th>
-                                            </tr>
-                                        </tfoot>
                                     </table>
                                 </div>
-                            @else
-                                <div class="empty-state text-center py-5">
-                                    <div class="mb-4">
-                                        <i class="bi bi-inbox display-1 text-muted"></i>
-                                    </div>
-                                    <h5 class="text-muted mb-3">Belum Ada Data Modal</h5>
-                                    <p class="text-muted mb-4">
-                                        Belum ada data modal untuk <strong>{{ $this->monthName }} {{ $filterYear }}</strong>.
-                                        <br>Klik tombol di bawah untuk menambahkan data baru.
-                                    </p>
-                                    @if ($hasJenisColumn)
-                                        <div class="d-flex gap-2 justify-content-center">
-                                            <button class="btn btn-success shadow-sm btn-hover" wire:click="openModal('masuk')">
-                                                <i class="bi bi-plus-circle me-2"></i>Modal Masuk
-                                            </button>
-                                            <button class="btn btn-danger shadow-sm btn-hover" wire:click="openModal('keluar')">
-                                                <i class="bi bi-dash-circle me-2"></i>Modal Keluar
-                                            </button>
-                                        </div>
-                                    @else
-                                        <button class="btn btn-primary shadow-sm btn-hover" wire:click="openModal('masuk')">
-                                            <i class="bi bi-plus-circle me-2"></i>Tambah Modal
-                                        </button>
-                                    @endif
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <h5 class="card-title mb-3 fw-bold text-dark">
+                                    <i class="bi bi-arrow-down-circle me-2 text-danger"></i>Modal Keluar
+                                </h5>
+                                <div class="table-responsive shadow-sm rounded-4 overflow-hidden">
+                                    <table class="table table-hover mb-0 modern-table">
+                                        <thead class="table-dark">
+                                            <tr>
+                                                <th class="border-0 py-3"><i class="bi bi-hash me-1"></i>No</th>
+                                                <th class="border-0 py-3"><i class="bi bi-calendar-date me-1"></i>Tanggal</th>
+                                                <th class="border-0 py-3"><i class="bi bi-currency-dollar me-1"></i>Nominal</th>
+                                                <th class="border-0 py-3 text-center"><i class="bi bi-gear me-1"></i>Aksi</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @forelse ($modalKeluar as $index => $capital)
+                                                <tr class="table-row-hover">
+                                                    <td class="py-3 fw-semibold">
+                                                        <span class="badge bg-light text-dark">{{ $index + 1 }}</span>
+                                                    </td>
+                                                    <td class="py-3">
+                                                        <div class="d-flex align-items-center">
+                                                            <i class="bi bi-calendar3 text-muted me-2"></i>
+                                                            <span class="fw-medium">{{ \Carbon\Carbon::parse($capital['tanggal'])->format('d/m/Y') }}</span>
+                                                        </div>
+                                                    </td>
+                                                    <td class="py-3">
+                                                        <span class="fw-bold text-danger fs-6">
+                                                            - Rp {{ number_format($capital['nominal'], 0, ',', '.') }}
+                                                        </span>
+                                                    </td>
+                                                    <td class="py-3 text-center">
+                                                        <div class="btn-group" role="group">
+                                                            <button class="btn btn-sm btn-outline-warning btn-hover" 
+                                                                wire:click="edit({{ $capital['id'] }})" title="Edit">
+                                                                <i class="bi bi-pencil"></i>
+                                                            </button>
+                                                            <button class="btn btn-sm btn-outline-danger btn-hover" 
+                                                                wire:click="confirmDelete({{ $capital['id'] }})"
+                                                                wire:confirm="Apakah Anda yakin ingin menghapus data ini?" title="Hapus">
+                                                                <i class="bi bi-trash"></i>
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            @empty
+                                                <tr>
+                                                    <td colspan="4" class="text-center py-4 text-muted">Tidak ada data modal keluar.</td>
+                                                </tr>
+                                            @endforelse
+                                        </tbody>
+                                    </table>
                                 </div>
+                            </div>
+                        </div>
+                        <hr class="my-4">
+                    @endif
+
+                    {{-- Tabel Data Modal Lengkap --}}
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <div>
+                            <h5 class="card-title mb-1 fw-bold text-dark">
+                                <i class="bi bi-table me-2 text-primary"></i>Data Modal
+                            </h5>
+                            @if ($filterJenis && $hasJenisColumn)
+                                <small class="text-muted">
+                                    <i class="bi bi-filter me-1"></i>Filter: {{ $filterJenis == 'masuk' ? 'Modal Masuk' : 'Modal Keluar' }}
+                                </small>
                             @endif
                         </div>
+                        @if (count($capitals) > 0)
+                            <div class="badge bg-primary fs-6 px-3 py-2">
+                                <i class="bi bi-list-ol me-1"></i>{{ count($capitals) }} Transaksi
+                            </div>
+                        @endif
+                    </div>
+
+                    @if (count($capitals) > 0)
+                        <div class="table-responsive shadow-sm rounded-4 overflow-hidden">
+                            <table class="table table-hover mb-0 modern-table">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th class="border-0 py-3"><i class="bi bi-hash me-1"></i>No</th>
+                                        <th class="border-0 py-3"><i class="bi bi-calendar-date me-1"></i>Tanggal</th>
+                                        <th class="border-0 py-3"><i class="bi bi-person me-1"></i>User</th>
+                                        @if ($tableStructure['has_keperluan'])
+                                            <th class="border-0 py-3"><i class="bi bi-clipboard me-1"></i>Keperluan</th>
+                                        @endif
+                                        @if ($tableStructure['has_keterangan'])
+                                            <th class="border-0 py-3"><i class="bi bi-journal-text me-1"></i>Keterangan</th>
+                                        @endif
+                                        @if ($hasJenisColumn)
+                                            <th class="border-0 py-3"><i class="bi bi-tags me-1"></i>Jenis</th>
+                                        @endif
+                                        <th class="border-0 py-3"><i class="bi bi-currency-dollar me-1"></i>Nominal</th>
+                                        <th class="border-0 py-3 text-center"><i class="bi bi-gear me-1"></i>Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach ($capitals as $index => $capital)
+                                        <tr class="table-row-hover">
+                                            <td class="py-3 fw-semibold">
+                                                <span class="badge bg-light text-dark">{{ $index + 1 }}</span>
+                                            </td>
+                                            <td class="py-3">
+                                                <div class="d-flex align-items-center">
+                                                    <i class="bi bi-calendar3 text-muted me-2"></i>
+                                                    <span class="fw-medium">{{ \Carbon\Carbon::parse($capital['tanggal'])->format('d/m/Y') }}</span>
+                                                </div>
+                                            </td>
+                                            <td class="py-3">
+                                                <div class="d-flex align-items-center">
+                                                    <div class="avatar-circle me-2">
+                                                        {{ strtoupper(substr(auth()->user()->name ?? 'U', 0, 1)) }}
+                                                    </div>
+                                                    <span class="fw-medium">{{ auth()->user()->name ?? 'Unknown' }}</span>
+                                                </div>
+                                            </td>
+                                            @if ($tableStructure['has_keperluan'])
+                                                <td class="py-3">
+                                                    <span class="{{ isset($capital['keperluan']) && $capital['keperluan'] ? 'text-dark' : 'text-muted' }}">
+                                                        {{ $capital['keperluan'] ?? '-' }}
+                                                    </span>
+                                                </td>
+                                            @endif
+                                            @if ($tableStructure['has_keterangan'])
+                                                <td class="py-3">
+                                                    <span class="{{ isset($capital['keterangan']) && $capital['keterangan'] ? 'text-dark' : 'text-muted' }}">
+                                                        @if(isset($capital['keterangan']) && $capital['keterangan'])
+                                                            {{ strlen($capital['keterangan']) > 30 ? substr($capital['keterangan'], 0, 30) . '...' : $capital['keterangan'] }}
+                                                        @else
+                                                            -
+                                                        @endif
+                                                    </span>
+                                                </td>
+                                            @endif
+                                            @if ($hasJenisColumn)
+                                                <td class="py-3">
+                                                    @php
+                                                        $jenis = $capital['jenis'] ?? 'masuk';
+                                                    @endphp
+                                                    <span class="badge bg-{{ $jenis == 'masuk' ? 'success' : 'danger' }} px-3 py-2">
+                                                        <i class="bi bi-{{ $jenis == 'masuk' ? 'arrow-up' : 'arrow-down' }} me-1"></i>
+                                                        {{ ucfirst($jenis) }}
+                                                    </span>
+                                                </td>
+                                            @endif
+                                            <td class="py-3">
+                                                @php
+                                                    $jenis = $hasJenisColumn ? ($capital['jenis'] ?? 'masuk') : 'masuk';
+                                                    $color = $jenis == 'masuk' ? 'success' : 'danger';
+                                                    $sign = $jenis == 'masuk' ? '+' : '-';
+                                                @endphp
+                                                <span class="fw-bold text-{{ $color }} fs-6">
+                                                    {{ $sign }} Rp {{ number_format($capital['nominal'], 0, ',', '.') }}
+                                                </span>
+                                            </td>
+                                            <td class="py-3 text-center">
+                                                <div class="btn-group" role="group">
+                                                    <button class="btn btn-sm btn-outline-warning btn-hover" 
+                                                        wire:click="edit({{ $capital['id'] }})" title="Edit">
+                                                        <i class="bi bi-pencil"></i>
+                                                    </button>
+                                                    <button class="btn btn-sm btn-outline-danger btn-hover" 
+                                                        wire:click="confirmDelete({{ $capital['id'] }})"
+                                                        wire:confirm="Apakah Anda yakin ingin menghapus data ini?" title="Hapus">
+                                                        <i class="bi bi-trash"></i>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                                <tfoot class="table-dark">
+                                    <tr>
+                                        @php
+                                            $colspan = 3; // No, Tanggal, User
+                                            if ($tableStructure['has_keperluan']) $colspan++;
+                                            if ($tableStructure['has_keterangan']) $colspan++;
+                                            if ($hasJenisColumn) $colspan++;
+                                        @endphp
+                                        <th colspan="{{ $colspan }}" class="text-end border-0 py-3 fw-bold">
+                                            <i class="bi bi-calculator me-2"></i>{{ $hasJenisColumn ? 'Saldo Modal:' : 'Total Modal:' }}
+                                        </th>
+                                        <th class="text-{{ $saldo >= 0 ? 'success' : 'danger' }} border-0 py-3">
+                                            <span class="fs-5 fw-bold">Rp {{ number_format($saldo, 0, ',', '.') }}</span>
+                                        </th>
+                                        <th class="border-0"></th>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
                     @else
-                        <div class="welcome-state text-center py-5">
+                        <div class="empty-state text-center py-5">
                             <div class="mb-4">
-                                <i class="bi bi-calendar-check display-1 text-primary opacity-75"></i>
+                                <i class="bi bi-inbox display-1 text-muted"></i>
                             </div>
-                            <h4 class="text-primary mb-3">Selamat Datang di Pengelolaan Modal</h4>
-                            <p class="text-muted mb-4 fs-5">
-                                Silakan <strong>pilih bulan dan tahun</strong> terlebih dahulu untuk melihat dan mengelola data modal Anda.
+                            <h5 class="text-muted mb-3">Belum Ada Data Modal</h5>
+                            <p class="text-muted mb-4">
+                                Belum ada data modal untuk <strong>{{ $this->monthName }} {{ $filterYear }}</strong>.
+                                <br>Klik tombol di bawah untuk menambahkan data baru.
                             </p>
-                            <div class="alert alert-info border-0 shadow-sm mx-auto" style="max-width: 500px;">
-                                <i class="bi bi-lightbulb me-2"></i>
-                                Tip: Gunakan filter di atas untuk menampilkan data modal berdasarkan periode yang diinginkan.
-                            </div>
+                            @if ($hasJenisColumn)
+                                <div class="d-flex gap-2 justify-content-center">
+                                    <button class="btn btn-success shadow-sm btn-hover" wire:click="openModal('masuk')">
+                                        <i class="bi bi-plus-circle me-2"></i>Modal Masuk
+                                    </button>
+                                    <button class="btn btn-danger shadow-sm btn-hover" wire:click="openModal('keluar')">
+                                        <i class="bi bi-dash-circle me-2"></i>Modal Keluar
+                                    </button>
+                                </div>
+                            @else
+                                <button class="btn btn-primary shadow-sm btn-hover" wire:click="openModal('masuk')">
+                                    <i class="bi bi-plus-circle me-2"></i>Tambah Modal
+                                </button>
+                            @endif
                         </div>
                     @endif
+
                 </div>
             </div>
         </section>
@@ -401,9 +450,6 @@
                                     {{ $isEdit ? 'Edit' : 'Tambah' }} Modal
                                     @if ($hasJenisColumn)
                                         {{ ucfirst($jenis) }}
-                                    @endif
-                                    @if ($filterMonth && $filterYear && !$isEdit)
-                                        - {{ $this->monthName }} {{ $filterYear }}
                                     @endif
                                 </h5>
                                 <button type="button" class="btn-close btn-close-white" wire:click="closeModal"></button>
@@ -437,11 +483,7 @@
                                                 <i class="bi bi-calendar-date me-1 text-primary"></i>Tanggal <span class="text-danger">*</span>
                                             </label>
                                             <input type="date" class="form-control @error('tanggal') is-invalid @enderror"
-                                                wire:model="tanggal"
-                                                @if ($filterMonth && $filterYear && !$isEdit) 
-                                                    min="{{ $filterYear }}-{{ str_pad($filterMonth, 2, '0', STR_PAD_LEFT) }}-01"
-                                                    max="{{ $this->maxDate }}" 
-                                                @endif>
+                                                wire:model="tanggal">
                                             @error('tanggal')
                                                 <div class="invalid-feedback">{{ $message }}</div>
                                             @enderror

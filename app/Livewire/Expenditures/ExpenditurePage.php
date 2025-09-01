@@ -420,7 +420,6 @@ class ExpenditurePage extends Component
                 return;
             }
 
-            // Get all expenditures for export (not just paginated ones)
             $expenditures = Expenditure::where('user_id', Auth::id())
                 ->whereMonth('tanggal', (int)$this->filterMonth)
                 ->whereYear('tanggal', (int)$this->filterYear)
@@ -432,27 +431,19 @@ class ExpenditurePage extends Component
                 return;
             }
 
-            // Nama file dengan format: expenditures_YYYY-MM.csv
             $monthName = $this->monthNames[(int)$this->filterMonth];
             $fileName = sprintf('pengeluaran_%s_%s.csv', $monthName, $this->filterYear);
 
-            // Header CSV
             $headers = [
                 'Content-Type' => 'text/csv; charset=UTF-8',
                 'Content-Disposition' => 'attachment; filename="' . $fileName . '"',
-                'Cache-Control' => 'must-revalidate, post-check=0, pre-check=0',
-                'Expires' => '0',
-                'Pragma' => 'public',
             ];
 
-            // Callback untuk generate CSV
             $callback = function() use ($expenditures) {
                 $file = fopen('php://output', 'w');
                 
-                // Add BOM untuk support Unicode di Excel
                 fprintf($file, chr(0xEF).chr(0xBB).chr(0xBF));
 
-                // Header kolom
                 fputcsv($file, [
                     'No',
                     'Tanggal',
@@ -460,35 +451,26 @@ class ExpenditurePage extends Component
                     'Jumlah',
                     'Tanggal Dibuat',
                     'Tanggal Diupdate'
-                ], ';');
+                ]);
 
-                // Data rows
                 $no = 1;
                 foreach ($expenditures as $expenditure) {
-                    $tanggal = Carbon::parse($expenditure->tanggal)->format('d/m/Y');
-                    $createdAt = Carbon::parse($expenditure->created_at)->format('d/m/Y H:i:s');
-                    $updatedAt = Carbon::parse($expenditure->updated_at)->format('d/m/Y H:i:s');
-
                     fputcsv($file, [
                         $no++,
-                        $tanggal,
+                        Carbon::parse($expenditure->tanggal)->format('Y-m-d'),
                         $expenditure->keterangan,
-                        number_format($expenditure->jumlah, 0, ',', '.'),
-                        $createdAt,
-                        $updatedAt
-                    ], ';');
+                        $expenditure->jumlah,
+                        Carbon::parse($expenditure->created_at)->format('Y-m-d H:i:s'),
+                        Carbon::parse($expenditure->updated_at)->format('Y-m-d H:i:s')
+                    ]);
                 }
 
-                // Row total
-                fputcsv($file, [], ';'); // Empty row
+                fputcsv($file, []); // Empty row
                 fputcsv($file, [
-                    '',
-                    '',
-                    'TOTAL:',
-                    number_format($this->total, 0, ',', '.'),
-                    '',
-                    ''
-                ], ';');
+                    '', '', 'TOTAL:',
+                    $this->total,
+                    '', ''
+                ]);
 
                 fclose($file);
             };
@@ -504,7 +486,6 @@ class ExpenditurePage extends Component
             ]);
             
             session()->flash('error', 'Terjadi kesalahan saat export data. Silakan coba lagi.');
-            return;
         }
     }
 

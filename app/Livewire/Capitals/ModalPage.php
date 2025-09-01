@@ -29,8 +29,6 @@ class ModalPage extends Component
     public $editId = null;
 
     // Properties untuk filter
-    public $filterMonth;
-    public $filterYear;
     public $filterJenis = '';
 
     // Properties untuk data
@@ -39,6 +37,9 @@ class ModalPage extends Component
     public $totalKeluar = 0;
     public $saldo = 0;
     public $totalTransaksi = 0;
+
+    public $monthName;
+    public $filterYear;
 
     // Array nama bulan dalam bahasa Indonesia
     public array $monthNames = [
@@ -109,15 +110,7 @@ class ModalPage extends Component
         return $this->columnCache[$columnName];
     }
 
-    /**
-     * Property untuk mendapatkan nama bulan
-     */
-    public function getMonthNameProperty()
-    {
-        return isset($this->monthNames[(int) $this->filterMonth])
-            ? $this->monthNames[(int) $this->filterMonth]
-            : '';
-    }
+    
 
     /**
      * Inisialisasi komponen
@@ -125,9 +118,12 @@ class ModalPage extends Component
     public function mount()
     {
         try {
-            $this->filterMonth = now()->month;
-            $this->filterYear = now()->year;
+            
             $this->tanggal = now()->format('Y-m-d');
+
+            $now = Carbon::now();
+            $this->monthName = $this->monthNames[$now->month];
+            $this->filterYear = $now->year;
             
             $this->resetData();
             $this->loadCapitals();
@@ -137,8 +133,6 @@ class ModalPage extends Component
 
             Log::info('Modal Page mounted successfully', [
                 'user_id' => Auth::check() ? Auth::id() : null,
-                'filter_month' => $this->filterMonth,
-                'filter_year' => $this->filterYear,
                 'has_jenis_column' => $this->hasColumn('jenis')
             ]);
         } catch (\Exception $e) {
@@ -172,19 +166,7 @@ class ModalPage extends Component
                 return;
             }
 
-            if (!$this->filterMonth || !$this->filterYear || 
-                !is_numeric($this->filterMonth) || !is_numeric($this->filterYear)) {
-                $this->resetData();
-                return;
-            }
-
-            $month = (int) $this->filterMonth;
-            $year = (int) $this->filterYear;
-
-            // Build query dengan backward compatibility
-            $query = Capital::where('user_id', Auth::id())
-                ->whereMonth('tanggal', $month)
-                ->whereYear('tanggal', $year);
+            $query = Capital::where('user_id', Auth::id());
 
             // Apply filter jenis jika kolom ada dan filter aktif
             if ($this->filterJenis && $this->hasColumn('jenis')) {
@@ -213,8 +195,6 @@ class ModalPage extends Component
         } catch (\Exception $e) {
             $this->resetData();
             Log::error('Error in loadCapitals: ' . $e->getMessage(), [
-                'filterMonth' => $this->filterMonth,
-                'filterYear' => $this->filterYear,
                 'user_id' => Auth::check() ? Auth::id() : null,
                 'trace' => $e->getTraceAsString()
             ]);
@@ -238,13 +218,7 @@ class ModalPage extends Component
             $this->editId = null;
             $this->jenis = $jenis;
 
-            // Set tanggal default berdasarkan filter yang aktif
-            if ($this->filterMonth && $this->filterYear) {
-                $defaultDate = Carbon::create($this->filterYear, $this->filterMonth, 1);
-                $this->tanggal = $defaultDate->format('Y-m-d');
-            } else {
-                $this->tanggal = now()->format('Y-m-d');
-            }
+            $this->tanggal = now()->format('Y-m-d');
 
             $this->resetInput();
 
@@ -378,15 +352,7 @@ class ModalPage extends Component
                 $data['jenis'] = $this->jenis;
             }
 
-            // Validasi periode untuk data baru
-            if (!$this->isEdit && $this->filterMonth && $this->filterYear) {
-                $tanggalInput = Carbon::parse($data['tanggal']);
-                if ($tanggalInput->month != $this->filterMonth || $tanggalInput->year != $this->filterYear) {
-                    $monthName = $this->monthNames[$this->filterMonth] ?? 'Unknown';
-                    $this->addError('tanggal', 'Tanggal harus sesuai dengan periode yang dipilih (' . $monthName . ' ' . $this->filterYear . ')');
-                    return;
-                }
-            }
+            
 
             // Proses simpan
             if ($this->isEdit && $this->editId) {
@@ -483,61 +449,11 @@ class ModalPage extends Component
         $this->delete($id);
     }
 
-    /**
-     * Reset semua filter
-     */
-    public function clearFilters()
-    {
-        $this->filterMonth = now()->month;
-        $this->filterYear = now()->year;
-        $this->filterJenis = '';
-        $this->resetInput();
-        $this->loadCapitals();
-        session()->flash('message', 'Filter berhasil direset.');
-    }
+    
 
-    /**
-     * Property untuk tanggal maksimal
-     */
-    public function getMaxDateProperty()
-    {
-        if (!$this->filterMonth || !$this->filterYear) {
-            return now()->format('Y-m-d');
-        }
+    
 
-        try {
-            return $this->filterYear . '-' . str_pad($this->filterMonth, 2, '0', STR_PAD_LEFT) . '-' .
-                Carbon::create($this->filterYear, $this->filterMonth)->daysInMonth;
-        } catch (\Exception $e) {
-            return now()->format('Y-m-d');
-        }
-    }
-
-    /**
-     * Property untuk statistik periode dengan backward compatibility
-     */
-    public function getPeriodStatsProperty()
-    {
-        if (!$this->filterMonth || !$this->filterYear || !Auth::check()) {
-            return null;
-        }
-
-        try {
-            $query = Capital::where('user_id', Auth::id())
-                ->whereMonth('tanggal', $this->filterMonth)
-                ->whereYear('tanggal', $this->filterYear);
-
-            return [
-                'total_transaksi' => $query->count(),
-                'rata_rata_nominal' => $query->avg('nominal') ?? 0,
-                'transaksi_terbesar' => $query->max('nominal') ?? 0,
-                'transaksi_terkecil' => $query->min('nominal') ?? 0,
-            ];
-        } catch (\Exception $e) {
-            Log::warning('Error calculating period stats: ' . $e->getMessage());
-            return null;
-        }
-    }
+    
 
     /**
      * Cek apakah kolom jenis ada (untuk backward compatibility)
@@ -550,17 +466,7 @@ class ModalPage extends Component
     /**
      * Update listeners dengan backward compatibility check
      */
-    public function updatedFilterMonth()
-    {
-        $this->resetInput();
-        $this->loadCapitals();
-    }
-
-    public function updatedFilterYear()
-    {
-        $this->resetInput();
-        $this->loadCapitals();
-    }
+    
 
     public function updatedFilterJenis()
     {
@@ -584,11 +490,7 @@ class ModalPage extends Component
     /**
      * Helper methods
      */
-    public function getAvailableYears()
-    {
-        $currentYear = now()->year;
-        return range($currentYear + 1, 2020);
-    }
+    
 
     public function getCapitalsCollection()
     {
@@ -626,7 +528,7 @@ class ModalPage extends Component
             'has_keterangan' => $this->hasColumn('keterangan'),
             'has_jenis' => $this->hasColumn('jenis'),
             'total_capitals' => count($this->capitals),
-            'filter_active' => ($this->filterMonth && $this->filterYear)
+            
         ];
     }
 
@@ -636,17 +538,28 @@ class ModalPage extends Component
     public function render()
     {
         $hasJenisColumn = $this->hasJenisColumn();
+        $capitalsCollection = $this->getCapitalsCollection();
+
+        if ($hasJenisColumn) {
+            $modalMasuk = $capitalsCollection->where('jenis', 'masuk');
+            $modalKeluar = $capitalsCollection->where('jenis', 'keluar');
+        } else {
+            $modalMasuk = $capitalsCollection;
+            $modalKeluar = collect([]);
+        }
         
         return view('livewire.capitals.modal-page', [
-            'capitals' => $this->getCapitalsCollection(),
+            'capitals' => $capitalsCollection,
+            'modalMasuk' => $modalMasuk,
+            'modalKeluar' => $modalKeluar,
             'totalMasuk' => $this->totalMasuk,
             'totalKeluar' => $this->totalKeluar,
             'saldo' => $this->saldo,
             'hasJenisColumn' => $hasJenisColumn,
-            'periodStats' => $this->periodStats,
             'tableStructure' => $this->getTableStructureInfo(),
-            'availableYears' => $this->getAvailableYears(),
-            'monthNames' => $this->monthNames
+            'monthNames' => $this->monthNames,
+            'monthName' => $this->monthName,
+            'filterYear' => $this->filterYear
         ]);
     }
 }

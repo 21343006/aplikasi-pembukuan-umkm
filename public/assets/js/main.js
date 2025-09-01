@@ -38,13 +38,31 @@
   }
 
   /**
-   * Sidebar toggle
+   * Event Delegation for Livewire-dynamic components in the header
    */
-  if (select('.toggle-sidebar-btn')) {
-    on('click', '.toggle-sidebar-btn', function(e) {
-      select('body').classList.toggle('toggle-sidebar')
-    })
-  }
+  document.addEventListener('click', function(e) {
+    const target = e.target;
+
+    // Sidebar Toggle
+    if (target.closest('.toggle-sidebar-btn')) {
+      e.preventDefault();
+      e.stopPropagation();
+      document.body.classList.toggle('toggle-sidebar');
+      return;
+    }
+
+    // Dropdowns within the main header navigation
+    const headerNav = target.closest('.header-nav');
+    if (headerNav) {
+      const dropdownToggle = target.closest('[data-bs-toggle="dropdown"]');
+      if (dropdownToggle) {
+        e.preventDefault();
+        e.stopPropagation();
+        const dropdown = bootstrap.Dropdown.getOrCreateInstance(dropdownToggle);
+        dropdown.toggle();
+      }
+    }
+  });
 
   /**
    * Search bar toggle
