@@ -11,12 +11,13 @@ use Livewire\Attributes\Title;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Carbon\Carbon;
 
 class BepForm extends Component
 {
     #[Title('Analisis Titik Impas (BEP)')]
 
-    public $mode = 'perPeriod'; // 'perPeriod' (bulanan) atau 'perDay' (harian)
+    public $mode = 'calculator'; // 'calculator', 'perProduct', 'perPeriod'
 
     // Properti untuk mode "Per Produk"
     public $beploadbep = [];
@@ -45,6 +46,12 @@ class BepForm extends Component
     public $bepRupiahPeriod = 0;
     public $calculationError = null;
     public $periodDataLoaded = false;
+
+    // Fitur tambahan untuk analisis BEP
+    public $targetProfit = 0;
+    public $marginOfSafety = 0;
+    public $sensitivityAnalysis = [];
+    public $showAdvancedAnalysis = false;
 
     // Derived metrics for per-product mode
     public $unitsSoldCache = [];
@@ -84,6 +91,7 @@ class BepForm extends Component
     {
         $this->mode = $mode;
         $this->loadDataForMode();
+        $this->resetAdvancedAnalysis();
     }
 
     public function loadDataForMode()
@@ -189,14 +197,55 @@ class BepForm extends Component
         }
     }
 
-    public function edit($id) { /* ... (logika edit tidak berubah) ... */ }
-    public function delete($id) { /* ... (logika delete tidak berubah) ... */ }
-    public function openModal() { $this->resetInput(); $this->loadPerProductData(); $this->showModal = true; }
-    public function closeModal() { $this->resetInput(); $this->showModal = false; }
-    public function resetInput() { /* ... (logika reset tidak berubah) ... */ }
-    public function getContributionMarginProperty() { return (float)$this->avgSellingPrice - (float)$this->modal_per_barang; }
-    public function getBepUnitProperty() { return ($this->contributionMargin > 0 && $this->totalFixedCost > 0) ? ceil((float)$this->totalFixedCost / $this->contributionMargin) : 0; }
-    public function getBepRupiahProperty() { return $this->bepUnit > 0 ? $this->bepUnit * (float)$this->avgSellingPrice : 0; }
+    public function edit($id)
+    {
+        try {
+            $bep = Bep::where('user_id', Auth::id())->findOrFail($id);
+            $this->bep_id = $bep->id;
+            $this->selectedProduk = $bep->nama_produk;
+            $this->totalFixedCost = $bep->modal_tetap;
+            $this->avgSellingPrice = $bep->harga_per_barang;
+            $this->modal_per_barang = $bep->modal_per_barang;
+            $this->isEdit = true;
+            $this->showModal = true;
+        } catch (\Exception $e) {
+            session()->flash('error', 'Gagal memuat data BEP untuk diedit.');
+        }
+    }
+
+    public function delete($id)
+    {
+        try {
+            Bep::where('user_id', Auth::id())->findOrFail($id)->delete();
+            session()->flash('message', 'Data BEP berhasil dihapus.');
+            $this->loadPerProductData();
+        } catch (\Exception $e) {
+            session()->flash('error', 'Gagal menghapus data BEP.');
+        }
+    }
+
+    public function openModal()
+    {
+        $this->resetInput();
+        $this->loadPerProductData();
+        $this->showModal = true;
+    }
+
+    public function closeModal()
+    {
+        $this->resetInput();
+        $this->showModal = false;
+    }
+
+    public function resetInput()
+    {
+        $this->bep_id = null;
+        $this->selectedProduk = '';
+        $this->totalFixedCost = 0;
+        $this->avgSellingPrice = 0;
+        $this->modal_per_barang = 0;
+        $this->isEdit = false;
+    }
 
     // ============================================
     // LOGIKA UNTUK MODE "PER PERIODE"
@@ -221,7 +270,6 @@ class BepForm extends Component
                 ->sum('nominal');
 
             // 2. Total Penjualan untuk periode yang dipilih
-            // Gunakan perhitungan eksplisit agar konsisten: jumlah_terjual * harga_satuan
             $this->totalSales = (float) Income::where('user_id', Auth::id())
                 ->whereYear('tanggal', $year)
                 ->whereMonth('tanggal', $month)
@@ -256,10 +304,87 @@ class BepForm extends Component
             $this->bepRupiahPeriod = $this->totalFixedCost / ($this->contributionMarginRatio / 100);
             $this->periodDataLoaded = true;
 
+            // Hitung margin of safety
+            $this->calculateMarginOfSafety();
+
         } catch (\Exception $e) {
             Log::error('Error calculating periodic BEP: ' . $e->getMessage());
             $this->calculationError = 'Terjadi kesalahan saat melakukan perhitungan.';
         }
+    }
+
+    // ============================
+    // FITUR ANALISIS LANJUTAN
+    // ============================
+
+    public function calculateMarginOfSafety()
+    {
+        if ($this->totalSales > 0 && $this->bepRupiahPeriod > 0) {
+            $this->marginOfSafety = (($this->totalSales - $this->bepRupiahPeriod) / $this->totalSales) * 100;
+        } else {
+            $this->marginOfSafety = 0;
+        }
+    }
+
+    public function calculateTargetProfitBep()
+    {
+        if ($this->targetProfit <= 0 || $this->contributionMarginRatio <= 0) {
+            return 0;
+        }
+        
+        // BEP dengan target profit = (Fixed Cost + Target Profit) / Contribution Margin Ratio
+        return ($this->totalFixedCost + $this->targetProfit) / ($this->contributionMarginRatio / 100);
+    }
+
+    public function runSensitivityAnalysis()
+    {
+        if (!$this->periodDataLoaded) {
+            return;
+        }
+
+        $this->sensitivityAnalysis = [];
+        
+        // Analisis sensitivitas untuk perubahan biaya tetap
+        $fixedCostChanges = [-20, -10, 0, 10, 20]; // dalam persen
+        foreach ($fixedCostChanges as $change) {
+            $newFixedCost = $this->totalFixedCost * (1 + $change / 100);
+            $newBep = $newFixedCost / ($this->contributionMarginRatio / 100);
+            $this->sensitivityAnalysis['fixed_cost'][$change] = [
+                'fixed_cost' => $newFixedCost,
+                'bep' => $newBep,
+                'change_percent' => $change
+            ];
+        }
+
+        // Analisis sensitivitas untuk perubahan margin kontribusi
+        $marginChanges = [-20, -10, 0, 10, 20]; // dalam persen
+        foreach ($marginChanges as $change) {
+            $newMargin = $this->contributionMarginRatio * (1 + $change / 100);
+            if ($newMargin > 0) {
+                $newBep = $this->totalFixedCost / ($newMargin / 100);
+                $this->sensitivityAnalysis['contribution_margin'][$change] = [
+                    'margin' => $newMargin,
+                    'bep' => $newBep,
+                    'change_percent' => $change
+                ];
+            }
+        }
+    }
+
+    public function toggleAdvancedAnalysis()
+    {
+        $this->showAdvancedAnalysis = !$this->showAdvancedAnalysis;
+        if ($this->showAdvancedAnalysis) {
+            $this->runSensitivityAnalysis();
+        }
+    }
+
+    public function resetAdvancedAnalysis()
+    {
+        $this->targetProfit = 0;
+        $this->marginOfSafety = 0;
+        $this->sensitivityAnalysis = [];
+        $this->showAdvancedAnalysis = false;
     }
 
     // ============================
@@ -348,6 +473,25 @@ class BepForm extends Component
         }
     }
 
+    // ============================
+    // Computed Properties
+    // ============================
+
+    public function getContributionMarginProperty()
+    {
+        return (float)$this->avgSellingPrice - (float)$this->modal_per_barang;
+    }
+
+    public function getBepUnitProperty()
+    {
+        return ($this->contributionMargin > 0 && $this->totalFixedCost > 0) ? ceil((float)$this->totalFixedCost / $this->contributionMargin) : 0;
+    }
+
+    public function getBepRupiahProperty()
+    {
+        return $this->bepUnit > 0 ? $this->bepUnit * (float)$this->avgSellingPrice : 0;
+    }
+
     public function getCalcMonthlySalesProperty()
     {
         $price = (float) $this->calcSellingPrice;
@@ -398,6 +542,16 @@ class BepForm extends Component
     {
         $remaining = (int) $this->calcBepUnits - (int) $this->calcUnitsSold;
         return $remaining > 0 ? $remaining : 0;
+    }
+
+    public function getCalcMarginOfSafetyProperty()
+    {
+        $sales = (float) $this->calcMonthlySales;
+        $bep = (float) $this->calcBepRupiah;
+        if ($sales <= 0 || $bep <= 0) {
+            return 0.0;
+        }
+        return (($sales - $bep) / $sales) * 100;
     }
 
     /**
@@ -462,6 +616,7 @@ class BepForm extends Component
         $this->bepRupiahPeriod = 0;
         $this->calculationError = null;
         $this->periodDataLoaded = false;
+        $this->marginOfSafety = 0;
     }
     
     public function getAvailableYearsProperty()
@@ -503,7 +658,6 @@ class BepForm extends Component
             }
             $this->calcFixedCost = (float) FixedCost::where('user_id', Auth::id())
                 ->whereYear('tanggal', (int)$this->selectedYear)
-                ->whereMonth('tanggal', (int)$this->selectedMonth)
                 ->sum('nominal');
         } catch (\Exception $e) {
             $this->calcFixedCost = 0;

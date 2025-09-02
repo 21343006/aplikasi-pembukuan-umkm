@@ -1,404 +1,403 @@
-<main id="main" class="main">
-    <div class="pagetitle">
-        <h1>Simulasi "Apa Jika?" (What-If Analysis)</h1>
-        <nav>
-            <ol class="breadcrumb">
-                <li class="breadcrumb-item"><a href="{{ route('dashboard') }}">Dashboard</a></li>
-                <li class="breadcrumb-item active">Simulasi "Apa Jika?"</li>
-            </ol>
-        </nav>
-    </div>
+<div>
+    <main id="main" class="main">
+        <div class="pagetitle">
+            <h1><i class="bi bi-graph-up-arrow me-2"></i>Analisis What If</h1>
+            <nav>
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="/dashboard">Dashboard</a></li>
+                    <li class="breadcrumb-item active">Analisis What If</li>
+                </ol>
+            </nav>
+        </div>
 
-    <section class="section">
-        <div class="card">
-            <div class="card-body">
-                <h5 class="card-title">Simulasi Dampak Perubahan Variabel Bisnis</h5>
-
-                <!-- Filter Periode -->
-                <div class="row g-3 align-items-end bg-light p-3 rounded mb-4">
-                    <div class="col-md-6">
-                        <label for="selectedMonth" class="form-label">Bulan</label>
-                        <select id="selectedMonth" wire:model.live="selectedMonth" class="form-select">
-                            @foreach($monthNames as $monthNum => $monthName)
-                                <option value="{{ $monthNum }}">{{ $monthName }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div class="col-md-6">
-                        <label for="selectedYear" class="form-label">Tahun</label>
-                        <input id="selectedYear" type="number" class="form-control" wire:model.live="selectedYear" min="2000" max="2099" placeholder="Contoh: {{ now()->year }}">
-                    </div>
-                </div>
-
-                <!-- Data Awal Bisnis Keseluruhan -->
-                <div class="card mb-4">
-                    <div class="card-header bg-primary text-white">
-                        <h5 class="mb-0"><i class="bi bi-clipboard-data me-2"></i>Data Awal Bisnis Keseluruhan</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <table class="table table-bordered">
-                                    <tr>
-                                        <th>Pendapatan Total</th>
-                                        <td class="text-end">Rp {{ number_format((float)$pendapatanTotal, 0, ',', '.') }}</td>
-                                    </tr>
-                                    <tr>
-                                        <th>Biaya Variabel Total</th>
-                                        <td class="text-end">Rp {{ number_format((float)$biayaVariabelTotal, 0, ',', '.') }}</td>
-                                    </tr>
-                                    <tr>
-                                        <th>Biaya Tetap (Bulanan)</th>
-                                        <td class="text-end">Rp {{ number_format((float)$biayaTetapTotal, 0, ',', '.') }}</td>
-                                    </tr>
-                                </table>
-                            </div>
-                            <div class="col-md-6">
-                                <table class="table table-bordered">
-                                    <tr>
-                                        <th>Laba Awal</th>
-                                        <td class="text-end {{ (float)$labaAwal < 0 ? 'text-danger' : 'text-success' }}">
-                                            Rp {{ number_format((float)$labaAwal, 0, ',', '.') }}
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <th>BEP (Rupiah)</th>
-                                        <td class="text-end">Rp {{ number_format((float)$bepRupiahAwal, 0, ',', '.') }}</td>
-                                    </tr>
-                                </table>
+        <section class="section">
+            <div class="row">
+                <div class="col-lg-12">
+                    
+                    {{-- Filter Periode --}}
+                    <div class="card mb-4">
+                        <div class="card-body">
+                            <h5 class="card-title">Filter Periode Analisis</h5>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <label for="selectedMonth" class="form-label">Bulan</label>
+                                    <select wire:model.live="selectedMonth" class="form-select" id="selectedMonth">
+                                        @foreach($monthNames as $monthNum => $monthName)
+                                            <option value="{{ $monthNum }}">{{ $monthName }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="selectedYear" class="form-label">Tahun</label>
+                                    <select wire:model.live="selectedYear" class="form-select" id="selectedYear">
+                                        @for ($i = 2020; $i <= 2030; $i++)
+                                            <option value="{{ $i }}">{{ $i }}</option>
+                                        @endfor
+                                    </select>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
 
-                <!-- Simulasi 1: Perubahan Harga -->
-                <div class="card mb-4">
-                    <div class="card-header bg-success text-white">
-                        <h5 class="mb-0"><i class="bi bi-graph-up-arrow me-2"></i>Simulasi 1: Jika Harga Berubah</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <label class="form-label">Pilih Produk (Opsional)</label>
-                                <select class="form-select" wire:model.live="selectedProduk">
-                                    <option value="">-- Analisis Bisnis Keseluruhan --</option>
-                                    @foreach ($produkList as $produk)
-                                        <option value="{{ $produk }}">{{ $produk }}</option>
-                                    @endforeach
-                                </select>
+                    @if(!empty($actualData))
+                        {{-- Data Aktual --}}
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">
+                                    <i class="bi bi-info-circle me-2"></i>
+                                    Data Aktual Bulan {{ $monthNames[$selectedMonth] }} {{ $selectedYear }}
+                                </h5>
                             </div>
-                            <div class="col-md-6">
-                                <label class="form-label">
-                                    @if(!empty($selectedProduk))
-                                        Perubahan Harga per Unit (%)
-                                    @else
-                                        Perubahan Pendapatan Total (%)
-                                    @endif
-                                </label>
-                                <div class="input-group">
-                                    <input type="number" class="form-control" wire:model.live="simulasiHarga" step="1">
-                                    <span class="input-group-text">%</span>
-                                    <button class="btn btn-primary" wire:click="simulasiPerubahanHarga">Simulasikan</button>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-3">
+                                        <div class="text-center p-3 border rounded">
+                                            <h4 class="text-success mb-1">Rp {{ number_format($actualData['revenue'], 0, ',', '.') }}</h4>
+                                            <small class="text-muted">Total Pendapatan</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="text-center p-3 border rounded">
+                                            <h4 class="text-primary mb-1">{{ number_format($actualData['units'], 0, ',', '.') }}</h4>
+                                            <small class="text-muted">Total Unit Terjual</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="text-center p-3 border rounded">
+                                            <h4 class="text-danger mb-1">Rp {{ number_format($actualData['total_cost'], 0, ',', '.') }}</h4>
+                                            <small class="text-muted">Total Biaya</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="text-center p-3 border rounded">
+                                            <h4 class="{{ $actualData['profit'] >= 0 ? 'text-success' : 'text-danger' }} mb-1">
+                                                Rp {{ number_format($actualData['profit'], 0, ',', '.') }}
+                                            </h4>
+                                            <small class="text-muted">Laba Bersih</small>
+                                        </div>
+                                    </div>
                                 </div>
-                                <small class="text-muted">
-                                    @if(!empty($selectedProduk))
-                                        Nilai positif untuk kenaikan, negatif untuk penurunan harga per unit produk.
-                                    @else
-                                        Nilai positif untuk kenaikan, negatif untuk penurunan pendapatan total.
-                                    @endif
-                                </small>
                             </div>
                         </div>
 
-                        @if(!empty($selectedProduk))
-                            <div class="card mb-3">
-                                <div class="card-header bg-light">
-                                    <h6 class="mb-0">Data Awal Produk: {{ $selectedProduk }}</h6>
+                        {{-- Skenario What If --}}
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">
+                                    <i class="bi bi-lightbulb me-2"></i>
+                                    Skenario What If
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <label for="selectedScenario" class="form-label">Pilih Skenario</label>
+                                        <select wire:model.live="selectedScenario" class="form-select" id="selectedScenario">
+                                            @foreach($scenarios as $key => $scenario)
+                                                <option value="{{ $key }}">{{ $scenario['name'] }}</option>
+                                            @endforeach
+                                        </select>
+                                        @if(isset($scenarios[$selectedScenario]))
+                                            <small class="text-muted">{{ $scenarios[$selectedScenario]['description'] }}</small>
+                                        @endif
+                                    </div>
+                                    <div class="col-md-6">
+                                        <button wire:click="resetParameters" class="btn btn-outline-secondary">
+                                            <i class="bi bi-arrow-clockwise me-1"></i>Reset Parameter
+                                        </button>
+                                    </div>
                                 </div>
-                                <div class="card-body">
-                                    <table class="table table-bordered table-sm">
-                                        <tr>
-                                            <th>Harga Jual per Unit</th>
-                                            <td class="text-end">Rp {{ number_format((float)$hargaJualAwalProduk, 0, ',', '.') }}</td>
-                                        </tr>
-                                        <tr>
-                                            <th>Biaya Variabel per Unit</th>
-                                            <td class="text-end">Rp {{ number_format((float)$biayaVariabelAwalProduk, 0, ',', '.') }}</td>
-                                        </tr>
-                                        <tr>
-                                            <th>Unit Terjual</th>
-                                            <td class="text-end">{{ number_format((float)$unitTerjualAwalProduk, 0, ',', '.') }} unit</td>
-                                        </tr>
-                                    </table>
+
+                                <hr class="my-4">
+
+                                <div class="row">
+                                    <div class="col-md-3">
+                                        <label for="priceChangePercent" class="form-label">Perubahan Harga (%)</label>
+                                        <input wire:model.live="priceChangePercent" type="number" class="form-control" 
+                                               id="priceChangePercent" step="0.1" placeholder="0">
+                                        <small class="text-muted">Contoh: 10 = naik 10%, -5 = turun 5%</small>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label for="volumeChangePercent" class="form-label">Perubahan Volume (%)</label>
+                                        <input wire:model.live="volumeChangePercent" type="number" class="form-control" 
+                                               id="volumeChangePercent" step="0.1" placeholder="0">
+                                        <small class="text-muted">Contoh: 20 = naik 20%, -15 = turun 15%</small>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label for="costChangePercent" class="form-label">Perubahan Biaya Variabel (%)</label>
+                                        <input wire:model.live="costChangePercent" type="number" class="form-control" 
+                                               id="costChangePercent" step="0.1" placeholder="0">
+                                        <small class="text-muted">Contoh: -10 = turun 10%, 5 = naik 5%</small>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label for="fixedCostChangePercent" class="form-label">Perubahan Biaya Tetap (%)</label>
+                                        <input wire:model.live="fixedCostChangePercent" type="number" class="form-control" 
+                                               id="fixedCostChangePercent" step="0.1" placeholder="0">
+                                        <small class="text-muted">Contoh: -5 = turun 5%, 8 = naik 8%</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- Hasil Analisis --}}
+                        @if(!empty($analysisResults))
+                            <div class="row">
+                                {{-- Perbandingan Utama --}}
+                                <div class="col-lg-8">
+                                    <div class="card mb-4">
+                                        <div class="card-header">
+                                            <h5 class="card-title mb-0">
+                                                <i class="bi bi-bar-chart me-2"></i>
+                                                Perbandingan Skenario
+                                            </h5>
+                                        </div>
+                                        <div class="card-body">
+                                            <div class="row">
+                                                <div class="col-md-6">
+                                                    <div class="text-center p-3 border rounded mb-3">
+                                                        <h6 class="text-muted">Pendapatan</h6>
+                                                        <h4 class="text-success mb-1">Rp {{ number_format($analysisResults['what_if']['revenue'], 0, ',', '.') }}</h4>
+                                                        <small class="{{ $analysisResults['what_if']['revenue_change'] >= 0 ? 'text-success' : 'text-danger' }}">
+                                                            {{ $analysisResults['what_if']['revenue_change'] >= 0 ? '+' : '' }}{{ number_format($analysisResults['what_if']['revenue_change_percent'], 1) }}%
+                                                        </small>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <div class="text-center p-3 border rounded mb-3">
+                                                        <h6 class="text-muted">Laba Bersih</h6>
+                                                        <h4 class="{{ $analysisResults['what_if']['profit'] >= 0 ? 'text-success' : 'text-danger' }} mb-1">
+                                                            Rp {{ number_format($analysisResults['what_if']['profit'], 0, ',', '.') }}
+                                                        </h4>
+                                                        <small class="{{ $analysisResults['what_if']['profit_change'] >= 0 ? 'text-success' : 'text-danger' }}">
+                                                            {{ $analysisResults['what_if']['profit_change'] >= 0 ? '+' : '' }}{{ number_format($analysisResults['what_if']['profit_change_percent'], 1) }}%
+                                                        </small>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {{-- Break-even Analysis --}}
+                                            <div class="row mt-3">
+                                                <div class="col-md-4">
+                                                    <div class="text-center p-2 border rounded">
+                                                        <h6 class="text-muted">Break-even Revenue</h6>
+                                                        <h6 class="text-warning">Rp {{ number_format($analysisResults['what_if']['break_even_revenue'], 0, ',', '.') }}</h6>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <div class="text-center p-2 border rounded">
+                                                        <h6 class="text-muted">Break-even Units</h6>
+                                                        <h6 class="text-warning">{{ number_format($analysisResults['what_if']['break_even_units'], 0, ',', '.') }}</h6>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <div class="text-center p-2 border rounded">
+                                                        <h6 class="text-muted">Margin of Safety</h6>
+                                                        <h6 class="text-info">{{ number_format($analysisResults['what_if']['margin_of_safety'], 1) }}%</h6>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {{-- Tabel Perbandingan --}}
+                                <div class="col-lg-4">
+                                    <div class="card mb-4">
+                                        <div class="card-header">
+                                            <h5 class="card-title mb-0">
+                                                <i class="bi bi-table me-2"></i>
+                                                Detail Perbandingan
+                                            </h5>
+                                        </div>
+                                        <div class="card-body">
+                                            <div class="table-responsive">
+                                                <table class="table table-sm">
+                                                    <thead>
+                                                        <tr>
+                                                            <th>Metrik</th>
+                                                            <th>Aktual</th>
+                                                            <th>What If</th>
+                                                            <th>Δ%</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        @foreach($comparisonTable['metrics'] as $metric => $data)
+                                                            <tr>
+                                                                <td><small>{{ $metric }}</small></td>
+                                                                <td><small>Rp {{ number_format($data['aktual'], 0, ',', '.') }}</small></td>
+                                                                <td><small>Rp {{ number_format($data['what_if'], 0, ',', '.') }}</small></td>
+                                                                <td>
+                                                                    <small class="{{ $data['change_percent'] >= 0 ? 'text-success' : 'text-danger' }}">
+                                                                        {{ $data['change_percent'] >= 0 ? '+' : '' }}{{ number_format($data['change_percent'], 1) }}%
+                                                                    </small>
+                                                                </td>
+                                                            </tr>
+                                                        @endforeach
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {{-- Chart Visualisasi --}}
+                            <div class="row">
+                                <div class="col-lg-6">
+                                    <div class="card mb-4">
+                                        <div class="card-header">
+                                            <h5 class="card-title mb-0">
+                                                <i class="bi bi-pie-chart me-2"></i>
+                                                Perbandingan Pendapatan
+                                            </h5>
+                                        </div>
+                                        <div class="card-body">
+                                            <canvas id="revenueChart" width="400" height="200"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-lg-6">
+                                    <div class="card mb-4">
+                                        <div class="card-header">
+                                            <h5 class="card-title mb-0">
+                                                <i class="bi bi-bar-chart me-2"></i>
+                                                Perbandingan Laba
+                                            </h5>
+                                        </div>
+                                        <div class="card-body">
+                                            <canvas id="profitChart" width="400" height="200"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {{-- Breakdown Biaya --}}
+                            <div class="row">
+                                <div class="col-12">
+                                    <div class="card mb-4">
+                                        <div class="card-header">
+                                            <h5 class="card-title mb-0">
+                                                <i class="bi bi-pie-chart me-2"></i>
+                                                Breakdown Biaya
+                                            </h5>
+                                        </div>
+                                        <div class="card-body">
+                                            <canvas id="costsChart" width="400" height="200"></canvas>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         @endif
 
-                        <div class="table-responsive">
-                            <table class="table table-bordered table-hover">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>Metrik</th>
-                                        <th class="text-center">Nilai Awal</th>
-                                        <th class="text-center">Nilai Baru</th>
-                                        <th class="text-center">Perubahan</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td>Laba</td>
-                                        <td class="text-end">Rp {{ number_format((float)$labaAwal, 0, ',', '.') }}</td>
-                                        <td class="text-end">Rp {{ number_format((float)$labaBaru, 0, ',', '.') }}</td>
-                                        <td class="text-end {{ (float)$persentasePerubahanLaba >= 0 ? 'text-success' : 'text-danger' }}">
-                                            {{ number_format((float)$persentasePerubahanLaba, 2, ',', '.') }}%
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td>
-                                            @if(!empty($selectedProduk))
-                                                Harga Jual Baru
-                                            @else
-                                                Pendapatan Total Baru
-                                            @endif
-                                        </td>
-                                        <td class="text-end">
-                                            @if(!empty($selectedProduk))
-                                                Rp {{ number_format((float)$hargaJualAwalProduk, 0, ',', '.') }}
-                                            @else
-                                                Rp {{ number_format((float)$pendapatanTotal, 0, ',', '.') }}
-                                            @endif
-                                        </td>
-                                        <td class="text-end">Rp {{ number_format((float)$hargaJualBaru, 0, ',', '.') }}</td>
-                                        <td class="text-end">
-                                            @if(!empty($selectedProduk))
-                                                @if((float)$hargaJualAwalProduk > 0)
-                                                    {{ number_format(((float)$hargaJualBaru - (float)$hargaJualAwalProduk) / (float)$hargaJualAwalProduk * 100, 2, ',', '.') }}%
-                                                @else
-                                                    -
-                                                @endif
-                                            @else
-                                                @if((float)$pendapatanTotal > 0)
-                                                    {{ number_format(((float)$hargaJualBaru - (float)$pendapatanTotal) / (float)$pendapatanTotal * 100, 2, ',', '.') }}%
-                                                @else
-                                                    -
-                                                @endif
-                                            @endif
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td>
-                                            @if(!empty($selectedProduk))
-                                                BEP (Unit)
-                                            @else
-                                                BEP (Rupiah)
-                                            @endif
-                                        </td>
-                                        <td class="text-end">
-                                            @if(!empty($selectedProduk))
-                                                {{ number_format((float)$bepUnitAwalProduk, 0, ',', '.') }}
-                                            @else
-                                                Rp {{ number_format((float)$bepRupiahAwal, 0, ',', '.') }}
-                                            @endif
-                                        </td>
-                                        <td class="text-end">
-                                            @if(!empty($selectedProduk))
-                                                {{ number_format((float)$bepUnitBaru, 0, ',', '.') }}
-                                            @else
-                                                Rp {{ number_format((float)$bepRupiahBaru, 0, ',', '.') }}
-                                            @endif
-                                        </td>
-                                        <td class="text-end">
-                                            @if(!empty($selectedProduk))
-                                                @if((float)$bepUnitAwalProduk > 0)
-                                                    {{ number_format(((float)$bepUnitBaru - (float)$bepUnitAwalProduk) / (float)$bepUnitAwalProduk * 100, 2, ',', '.') }}%
-                                                @else
-                                                    -
-                                                @endif
-                                            @else
-                                                @if((float)$bepRupiahAwal > 0)
-                                                    {{ number_format(((float)$bepRupiahBaru - (float)$bepRupiahAwal) / (float)$bepRupiahAwal * 100, 2, ',', '.') }}%
-                                                @else
-                                                    -
-                                                @endif
-                                            @endif
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-
-                        <div class="alert alert-info mt-3">
-                            <i class="bi bi-lightbulb me-2"></i>
-                            <strong>Dampak pada Laba dan BEP:</strong>
-                            @php
-                                $persentasePerubahanBep = 0;
-                                if (!empty($selectedProduk)) {
-                                    if ((float)$bepUnitAwalProduk != 0) {
-                                        $persentasePerubahanBep = (((float)$bepUnitBaru - (float)$bepUnitAwalProduk) / abs((float)$bepUnitAwalProduk)) * 100;
-                                    } else {
-                                        $persentasePerubahanBep = (float)$bepUnitBaru > 0 ? 100 : 0;
-                                    }
-                                } else {
-                                    if ((float)$bepRupiahAwal != 0) {
-                                        $persentasePerubahanBep = (((float)$bepRupiahBaru - (float)$bepRupiahAwal) / abs((float)$bepRupiahAwal)) * 100;
-                                    } else {
-                                        $persentasePerubahanBep = (float)$bepRupiahBaru > 0 ? 100 : 0;
-                                    }
-                                }
-                            @endphp
-                            @if(!empty($selectedProduk))
-                                @if((float)$persentasePerubahanLaba > 0)
-                                    Jika harga produk {{ $selectedProduk }} berubah sebesar {{ number_format((float)$simulasiHarga, 2, ',', '.') }}%, laba akan <strong>meningkat</strong> sebesar {{ number_format((float)$persentasePerubahanLaba, 2, ',', '.') }}%
-                                    dan BEP (Unit) akan {{ (float)$persentasePerubahanBep >= 0 ? 'meningkat' : 'menurun' }} sebesar {{ number_format(abs((float)$persentasePerubahanBep), 2, ',', '.') }}%.<br>
-                                @elseif((float)$persentasePerubahanLaba < 0)
-                                    Jika harga produk {{ $selectedProduk }} berubah sebesar {{ number_format((float)$simulasiHarga, 2, ',', '.') }}%, laba akan <strong>menurun</strong> sebesar {{ number_format(abs((float)$persentasePerubahanLaba), 2, ',', '.') }}%
-                                    dan BEP (Unit) akan {{ (float)$persentasePerubahanBep >= 0 ? 'meningkat' : 'menurun' }} sebesar {{ number_format(abs((float)$persentasePerubahanBep), 2, ',', '.') }}%.<br>
-                                @else
-                                    Perubahan harga produk {{ $selectedProduk }} sebesar {{ number_format((float)$simulasiHarga, 2, ',', '.') }}% tidak akan mengubah laba secara signifikan.
-                                @endif
-                            @else
-                                @if((float)$persentasePerubahanLaba > 0)
-                                    Jika pendapatan total berubah sebesar {{ number_format((float)$simulasiHarga, 2, ',', '.') }}%, laba akan <strong>meningkat</strong> sebesar {{ number_format((float)$persentasePerubahanLaba, 2, ',', '.') }}%
-                                    dan BEP (Rupiah) akan {{ (float)$persentasePerubahanBep >= 0 ? 'meningkat' : 'menurun' }} sebesar {{ number_format(abs((float)$persentasePerubahanBep), 2, ',', '.') }}%.<br>
-                                @elseif((float)$persentasePerubahanLaba < 0)
-                                    Jika pendapatan total berubah sebesar {{ number_format((float)$simulasiHarga, 2, ',', '.') }}%, laba akan <strong>menurun</strong> sebesar {{ number_format(abs((float)$persentasePerubahanLaba), 2, ',', '.') }}%
-                                    dan BEP (Rupiah) akan {{ (float)$persentasePerubahanBep >= 0 ? 'meningkat' : 'menurun' }} sebesar {{ number_format(abs((float)$persentasePerubahanBep), 2, ',', '.') }}%.<br>
-                            @else
-                                    Perubahan pendapatan total sebesar {{ number_format((float)$simulasiHarga, 2, ',', '.') }}% tidak akan mengubah laba secara signifikan.
-                                @endif
-                            @endif
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Simulasi 2: Kenaikan Biaya Bahan -->
-                <div class="card mb-4">
-                    <div class="card-header bg-warning text-dark">
-                        <h5 class="mb-0"><i class="bi bi-currency-exchange me-2"></i>Simulasi 2: Jika Biaya Variabel Total Naik</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <label class="form-label">Kenaikan Biaya Variabel Total (%)</label>
-                                <div class="input-group">
-                                    <input type="number" class="form-control" wire:model.live="persentaseKenaikanBiaya" min="0" step="1">
-                                    <span class="input-group-text">%</span>
-                                    <button class="btn btn-primary" wire:click="simulasiKenaikanBiaya">Simulasikan</button>
-                                </div>
+                        {{-- Buat Skenario Custom --}}
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">
+                                    <i class="bi bi-plus-circle me-2"></i>
+                                    Buat Skenario Custom
+                                </h5>
                             </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Biaya Variabel Total Baru</label>
-                                <div class="input-group">
-                                    <span class="input-group-text">Rp</span>
-                                    <input type="text" class="form-control" value="{{ number_format((float)$biayaVariabelBaru, 0, ',', '.') }}" readonly>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <label for="scenarioName" class="form-label">Nama Skenario</label>
+                                        <input wire:model="scenarioName" type="text" class="form-control" 
+                                               id="scenarioName" placeholder="Contoh: Skenario Ekspansi">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="scenarioDescription" class="form-label">Deskripsi</label>
+                                        <input wire:model="scenarioDescription" type="text" class="form-control" 
+                                               id="scenarioDescription" placeholder="Deskripsi singkat skenario">
+                                    </div>
+                                </div>
+                                <div class="mt-3">
+                                    <button wire:click="createCustomScenario" class="btn btn-primary">
+                                        <i class="bi bi-plus-circle me-1"></i>Buat Skenario
+                                    </button>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="table-responsive">
-                            <table class="table table-bordered table-hover">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>Metrik</th>
-                                        <th class="text-center">Nilai Awal</th>
-                                        <th class="text-center">Nilai Baru</th>
-                                        <th class="text-center">Perubahan</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td>Laba</td>
-                                        <td class="text-end">Rp {{ number_format((float)$labaAwal, 0, ',', '.') }}</td>
-                                        <td class="text-end {{ (float)$labaSetelahKenaikanBiaya < 0 ? 'text-danger' : 'text-success' }}">
-                                            Rp {{ number_format((float)$labaSetelahKenaikanBiaya, 0, ',', '.') }}
-                                        </td>
-                                        <td class="text-end {{ (float)$persentasePerubahanLabaBiaya >= 0 ? 'text-success' : 'text-danger' }}">
-                                            {{ number_format((float)$persentasePerubahanLabaBiaya, 2, ',', '.') }}%
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-
-                        <div class="alert {{ (float)$masihUntung ? 'alert-success' : 'alert-danger' }} mt-3">
-                            <i class="bi {{ (float)$masihUntung ? 'bi-check-circle' : 'bi-exclamation-triangle' }} me-2"></i>
-                            <strong>Status Profitabilitas:</strong>
-                            @if((float)$masihUntung)
-                                Meskipun biaya variabel total naik sebesar {{ number_format((float)$persentaseKenaikanBiaya, 0, ',', '.') }}%, bisnis <strong>masih menguntungkan</strong>.
-                            @else
-                                Jika biaya variabel total naik sebesar {{ number_format((float)$persentaseKenaikanBiaya, 0, ',', '.') }}%, bisnis <strong>akan merugi</strong>.
-                            @endif
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Simulasi 3: Tambah Karyawan -->
-                <div class="card mb-4">
-                    <div class="card-header bg-info text-white">
-                        <h5 class="mb-0"><i class="bi bi-people me-2"></i>Simulasi 3: Jika Tambah Karyawan</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="row mb-3">
-                            <div class="col-md-4">
-                                <label class="form-label">Jumlah Karyawan Baru</label>
-                                <input type="number" class="form-control" wire:model.live="jumlahKaryawanBaru" min="1" step="1">
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label">Gaji per Karyawan</label>
-                                <div class="input-group">
-                                    <span class="input-group-text">Rp</span>
-                                    <input type="number" class="form-control" wire:model.live="gajiPerKaryawan" min="0" step="100000">
-                                </div>
-                            </div>
-                            <div class="col-md-4 d-flex align-items-end">
-                                <button class="btn btn-primary" wire:click="simulasiTambahKaryawan">Simulasikan</button>
+                    @else
+                        {{-- Tidak ada data --}}
+                        <div class="card">
+                            <div class="card-body text-center py-5">
+                                <i class="bi bi-inbox fs-1 text-muted mb-3"></i>
+                                <h5 class="text-muted">Tidak ada data untuk periode yang dipilih</h5>
+                                <p class="text-muted">Silakan pilih periode lain atau pastikan ada data transaksi</p>
                             </div>
                         </div>
+                    @endif
 
-                        <div class="table-responsive">
-                            <table class="table table-bordered table-hover">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>Metrik</th>
-                                        <th class="text-center">Nilai</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td>Tambahan Biaya Tetap</td>
-                                        <td class="text-end">Rp {{ number_format((float)$tambahBiayaTetap, 0, ',', '.') }}</td>
-                                    </tr>
-                                    <tr>
-                                        <td>BEP Baru (Rupiah)</td>
-                                        <td class="text-end">Rp {{ number_format((float)$bepBaruDenganKaryawan, 0, ',', '.') }}</td>
-                                    </tr>
-                                    <tr>
-                                        <td>Estimasi Waktu Balik Modal</td>
-                                        <td class="text-end">
-                                            @if((float)$estimasiWaktuBalikModal > 0)
-                                                {{ number_format((float)$estimasiWaktuBalikModal, 0, ',', '.') }} bulan
-                                            @else
-                                                <span class="text-danger">Tidak dapat balik modal dengan kondisi saat ini</span>
-                                            @endif
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-
-                        <div class="alert alert-info mt-3">
-                            <i class="bi bi-lightbulb me-2"></i>
-                            <strong>Insight:</strong>
-                            @if((float)$estimasiWaktuBalikModal > 0)
-                                Dengan menambah {{ (float)$jumlahKaryawanBaru }} karyawan baru (total biaya Rp {{ number_format((float)$tambahBiayaTetap, 0, ',', '.') }}),
-                                diperkirakan akan balik modal dalam {{ number_format((float)$estimasiWaktuBalikModal, 0, ',', '.') }} bulan.
-                            @else
-                                Dengan kondisi bisnis saat ini, penambahan karyawan tidak disarankan karena tidak dapat balik modal.
-                            @endif
-                        </div>
-                    </div>
                 </div>
             </div>
-        </div>
-    </section>
-</main>
+        </section>
+    </main>
+
+    @if(!empty($chartData))
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+        <script>
+            document.addEventListener('livewire:init', () => {
+                // Revenue Chart
+                const revenueCtx = document.getElementById('revenueChart').getContext('2d');
+                new Chart(revenueCtx, {
+                    type: 'bar',
+                    data: @json($chartData['revenue']),
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true
+                            }
+                        }
+                    }
+                });
+
+                // Profit Chart
+                const profitCtx = document.getElementById('profitChart').getContext('2d');
+                new Chart(profitCtx, {
+                    type: 'bar',
+                    data: @json($chartData['profit']),
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true
+                            }
+                        }
+                    }
+                });
+
+                // Costs Chart
+                const costsCtx = document.getElementById('costsChart').getContext('2d');
+                new Chart(costsCtx, {
+                    type: 'bar',
+                    data: @json($chartData['costs']),
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true
+                            }
+                        }
+                    }
+                });
+            });
+        </script>
+    @endif
+</div>
