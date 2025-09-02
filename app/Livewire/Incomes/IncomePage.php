@@ -3,6 +3,7 @@
 namespace App\Livewire\Incomes;
 
 use App\Models\Income;
+use App\Models\Product;
 use Livewire\Component;
 use Livewire\Attributes\Title;
 use Livewire\WithPagination;
@@ -18,7 +19,8 @@ class IncomePage extends Component
 
     // Basic properties with proper initialization
     public $tanggal = '';
-    public $produk = '';
+    public $produk = ''; // This will be deprecated, but kept for now
+    public $product_id = null;
     public $jumlah_terjual = 0;
     public $harga_satuan = 0;
     public $biaya_per_unit = 0;
@@ -34,6 +36,7 @@ class IncomePage extends Component
 
     // Array properties with proper initialization
     public array $incomes = [];
+    public array $products = [];
     public array $monthlyTotals = [];
 
     protected $paginationTheme = 'bootstrap';
@@ -58,7 +61,7 @@ class IncomePage extends Component
     {
         return [
             'tanggal' => 'required|date',
-            'produk' => 'required|string|max:255',
+            'product_id' => 'required|integer|exists:products,id',
             'jumlah_terjual' => 'required|integer|min:1',
             'harga_satuan' => 'required|numeric|min:0',
             'biaya_per_unit' => 'nullable|numeric|min:0',
@@ -122,6 +125,7 @@ class IncomePage extends Component
         try {
             $this->resetFormData();
             $this->loadMonthlyTotals();
+            $this->products = Product::where('user_id', Auth::id())->orderBy('name')->get()->toArray();
         } catch (\Exception $e) {
             Log::error('Error in mount: ' . $e->getMessage());
             $this->resetFormData();
@@ -348,13 +352,22 @@ class IncomePage extends Component
                 return;
             }
 
+            $product = Product::findOrFail($this->product_id);
+
+            // Check if there is enough stock
+            if (!$this->isEdit && $product->quantity < $this->jumlah_terjual) {
+                $this->addError('jumlah_terjual', 'Stok tidak mencukupi. Stok tersisa: ' . $product->quantity);
+                return;
+            }
+
             $total_pendapatan = (float) $this->harga_satuan * (int) $this->jumlah_terjual;
             $laba = ($this->harga_satuan - $this->biaya_per_unit) * $this->jumlah_terjual;
 
             $data = [
                 'user_id' => Auth::id(),
+                'product_id' => $this->product_id,
                 'tanggal' => $this->tanggal,
-                'produk' => trim((string) $this->produk),
+                'produk' => $product->name, // Populate legacy field
                 'jumlah_terjual' => (int) $this->jumlah_terjual,
                 'harga_satuan' => (float) $this->harga_satuan,
                 'biaya_per_unit' => (float) ($this->biaya_per_unit ?? 0),
@@ -364,11 +377,27 @@ class IncomePage extends Component
 
             if ($this->isEdit && $this->income_id) {
                 $income = Income::where('user_id', Auth::id())->findOrFail($this->income_id);
+                
+                // Re-add old quantity to stock before updating
+                $old_product = Product::find($income->product_id);
+                if($old_product) {
+                    $old_product->quantity += $income->jumlah_terjual;
+                    $old_product->save();
+                }
+
                 $income->update($data);
+                
+                // Deduct new quantity from stock
+                $product->quantity -= (int) $this->jumlah_terjual;
+                $product->save();
 
                 session()->flash('message', 'Data berhasil diperbarui!');
             } else {
                 Income::create($data);
+
+                // Deduct from stock
+                $product->quantity -= (int) $this->jumlah_terjual;
+                $product->save();
 
                 session()->flash('message', 'Data berhasil ditambahkan!');
             }
@@ -378,8 +407,9 @@ class IncomePage extends Component
             $this->loadMonthlyTotals();
             $this->dispatch('loadProductAnalysis', ['month' => $this->filterMonth, 'year' => $this->filterYear]);
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-            Log::error('Income not found: ' . $e->getMessage(), [
+            Log::error('Income or Product not found: ' . $e->getMessage(), [
                 'income_id' => $this->income_id,
+                'product_id' => $this->product_id,
                 'user_id' => Auth::id(),
             ]);
             session()->flash('error', 'Data tidak ditemukan atau Anda tidak memiliki akses.');
@@ -409,6 +439,7 @@ class IncomePage extends Component
             $income = Income::where('user_id', Auth::id())->findOrFail($id);
 
             $this->income_id = $income->id;
+            $this->product_id = $income->product_id;
 
             // Perbaikan: Sederhanakan seperti di expenditures
             if ($income->tanggal instanceof \Carbon\Carbon) {
@@ -458,6 +489,16 @@ class IncomePage extends Component
             }
 
             $income = Income::where('user_id', Auth::id())->findOrFail($id);
+            
+            // Restore stock
+            if ($income->product_id) {
+                $product = Product::find($income->product_id);
+                if ($product) {
+                    $product->quantity += $income->jumlah_terjual;
+                    $product->save();
+                }
+            }
+            
             $income->delete();
 
             $this->loadIncomes();
@@ -595,6 +636,7 @@ class IncomePage extends Component
         $this->reset([
             'tanggal',
             'produk',
+            'product_id',
             'jumlah_terjual',
             'harga_satuan',
             'biaya_per_unit',

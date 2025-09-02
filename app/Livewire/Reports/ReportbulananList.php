@@ -23,7 +23,6 @@ class ReportbulananList extends Component
     // Saldo calculations
     public $saldoAwal = 0;
     public $saldoAkhirBulanIni = 0;
-    public $totalSaldoKumulatif = 0;
     
     // Main transaction totals
     public $totalUangMasuk = 0;
@@ -206,9 +205,12 @@ class ReportbulananList extends Component
             $this->totalPemasukanBulanIni = $this->totalUangMasuk + $this->totalModalAwal;
             $this->totalPengeluaranBulanIni = $this->totalUangKeluar + $this->totalModalKeluar + $this->totalModalTetap;
 
-            // Calculate final balance
+            // Calculate final balance for this month only (not cumulative)
             $this->saldoAkhirBulanIni = $this->totalPemasukanBulanIni - $this->totalPengeluaranBulanIni;
-            $this->totalSaldoKumulatif = $this->saldoAwal + $this->saldoAkhirBulanIni;
+            
+            // Total saldo kumulatif akan dihitung di view berdasarkan saldo awal + transaksi harian
+            // Tidak perlu menghitung di sini untuk menghindari penghitungan ganda
+            // $this->totalSaldoKumulatif = $this->saldoAwal + $this->saldoAkhirBulanIni;
 
             // Populate monthly summary keterangan
             $this->monthlySummaryKeterangan = "Ringkasan Bulanan - Pemasukan: " . $this->formatCurrency($this->totalPemasukanBulanIni) . ", Pengeluaran: " . $this->formatCurrency($this->totalPengeluaranBulanIni);
@@ -288,7 +290,6 @@ class ReportbulananList extends Component
         $this->rekapHarian = [];
         $this->saldoAwal = 0;
         $this->saldoAkhirBulanIni = 0;
-        $this->totalSaldoKumulatif = 0;
         $this->totalUangMasuk = 0;
         $this->totalUangKeluar = 0;
         $this->totalModalAwal = 0;
@@ -325,7 +326,7 @@ class ReportbulananList extends Component
             'saldo' => [
                 'awal' => $this->saldoAwal,
                 'perubahan_bulan_ini' => $this->saldoAkhirBulanIni,
-                'kumulatif' => $this->totalSaldoKumulatif
+                'kumulatif' => $this->saldoAwal + $this->saldoAkhirBulanIni
             ],
             'pemasukan' => [
                 'transaksi_harian' => $this->totalUangMasuk,
@@ -489,7 +490,7 @@ class ReportbulananList extends Component
             'saldo' => [
                 'awal' => $this->saldoAwal,
                 'akhir_bulan_ini' => $this->saldoAkhirBulanIni,
-                'kumulatif' => $this->totalSaldoKumulatif
+                'kumulatif' => $this->saldoAwal + $this->saldoAkhirBulanIni
             ],
             'transaksi_harian' => [
                 'masuk' => $this->totalUangMasuk,
@@ -509,6 +510,36 @@ class ReportbulananList extends Component
             'rekap_harian' => $this->rekapHarian,
             'performance' => $this->getMonthlyPerformance(),
             'expense_percentage' => $this->getExpensePercentage()
+        ];
+    }
+
+    /**
+     * Get monthly summary data
+     */
+    public function getMonthlySummary(): array
+    {
+        return [
+            'periode' => [
+                'bulan' => $this->bulan,
+                'tahun' => $this->tahun,
+                'nama_bulan' => $this->getNamaBulan((int) $this->bulan)
+            ],
+            'saldo' => [
+                'awal' => $this->saldoAwal,
+                'perubahan_bulan_ini' => $this->saldoAkhirBulanIni,
+                'kumulatif' => $this->saldoAwal + $this->saldoAkhirBulanIni
+            ],
+            'pemasukan' => [
+                'transaksi_harian' => $this->totalUangMasuk,
+                'modal_awal' => $this->totalModalAwal,
+                'total' => $this->totalPemasukanBulanIni
+            ],
+            'pengeluaran' => [
+                'transaksi_harian' => $this->totalUangKeluar,
+                'modal_keluar' => $this->totalModalKeluar,
+                'modal_tetap' => $this->totalModalTetap,
+                'total' => $this->totalPengeluaranBulanIni
+            ]
         ];
     }
 

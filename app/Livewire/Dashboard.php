@@ -9,6 +9,8 @@ use App\Models\Expenditure;
 use App\Models\Capitalearly;
 use App\Models\Capital;
 use App\Models\FixedCost;
+use App\Models\Debt;
+use App\Models\Receivable;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -66,12 +68,35 @@ class Dashboard extends Component
         // Balance
         $this->currentBalance = $this->totalIncome - $this->totalExpenditure;
 
+        // Debt & Receivable Summary
+        $totalDebts = Debt::where('user_id', $userId)->sum('amount');
+        $totalDebtsPaid = Debt::where('user_id', $userId)->sum('paid_amount');
+        $totalDebtsRemaining = $totalDebts - $totalDebtsPaid;
+        $overdueDebts = Debt::where('user_id', $userId)
+            ->where('due_date', '<', now())
+            ->where('status', '!=', 'paid')
+            ->count();
+
+        $totalReceivables = Receivable::where('user_id', $userId)->sum('amount');
+        $totalReceivablesPaid = Receivable::where('user_id', $userId)->sum('paid_amount');
+        $totalReceivablesRemaining = $totalReceivables - $totalReceivablesPaid;
+        $overdueReceivables = Receivable::where('user_id', $userId)
+            ->where('due_date', '<', now())
+            ->where('status', '!=', 'paid')
+            ->count();
+
         return view('livewire.dashboard', [
             'totalIncome' => $this->totalIncome,
             'totalExpenditure' => $this->totalExpenditure,
             'currentBalance' => $this->currentBalance,
             'totalDailyIncome' => $this->totalDailyIncome,
             'totalDailyExpenditure' => $this->totalDailyExpenditure,
+            'totalDebts' => $totalDebts,
+            'totalDebtsRemaining' => $totalDebtsRemaining,
+            'overdueDebts' => $overdueDebts,
+            'totalReceivables' => $totalReceivables,
+            'totalReceivablesRemaining' => $totalReceivablesRemaining,
+            'overdueReceivables' => $overdueReceivables,
         ]);
     }
 }

@@ -335,16 +335,55 @@
                                             </li>
                                         @endif
 
-                                        {{-- Pagination Elements --}}
-                                        @foreach ($paginatedIncomes->getUrlRange(1, $paginatedIncomes->lastPage()) as $page => $url)
-                                            @if ($page == $paginatedIncomes->currentPage())
+                                        {{-- Smart Pagination Elements --}}
+                                        @php
+                                            $currentPage = $paginatedIncomes->currentPage();
+                                            $lastPage = $paginatedIncomes->lastPage();
+                                            $maxVisible = 7;
+                                            
+                                            if ($lastPage <= $maxVisible) {
+                                                $links = range(1, $lastPage);
+                                            } else {
+                                                $links = [];
+                                                $links[] = 1;
+                                                
+                                                $start = max(2, $currentPage - floor(($maxVisible - 4) / 2));
+                                                $end = min($lastPage - 1, $start + $maxVisible - 5);
+                                                
+                                                if ($end == $lastPage - 1) {
+                                                    $start = max(2, $end - $maxVisible + 5);
+                                                }
+                                                
+                                                if ($start > 2) {
+                                                    $links[] = 'ellipsis';
+                                                }
+                                                
+                                                for ($i = $start; $i <= $end; $i++) {
+                                                    $links[] = $i;
+                                                }
+                                                
+                                                if ($end < $lastPage - 1) {
+                                                    $links[] = 'ellipsis';
+                                                }
+                                                
+                                                if ($lastPage > 1) {
+                                                    $links[] = $lastPage;
+                                                }
+                                            }
+                                        @endphp
+                                        
+                                        @foreach ($links as $page)
+                                            @if ($page === 'ellipsis')
+                                                <li class="page-item ellipsis">
+                                                    <span class="page-link"></span>
+                                                </li>
+                                            @elseif ($page == $currentPage)
                                                 <li class="page-item active">
                                                     <span class="page-link">{{ $page }}</span>
                                                 </li>
                                             @else
                                                 <li class="page-item">
-                                                    <button class="page-link"
-                                                        wire:click="gotoPage({{ $page }})">
+                                                    <button class="page-link" wire:click="gotoPage({{ $page }})">
                                                         {{ $page }}
                                                     </button>
                                                 </li>
@@ -439,13 +478,15 @@
                                 </div>
                                 <div class="col-md-6">
                                     <div class="mb-3">
-                                        <label class="form-label">Produk/Jasa <span
+                                        <label class="form-label">Produk <span
                                                 class="text-danger">*</span></label>
-                                        <input type="text"
-                                            class="form-control @error('produk') is-invalid @enderror"
-                                            wire:model.live="produk" placeholder="Masukkan nama produk atau jasa"
-                                            maxlength="255">
-                                        @error('produk')
+                                        <select class="form-select @error('product_id') is-invalid @enderror" wire:model.live="product_id">
+                                            <option value="">-- Pilih Produk --</option>
+                                            @foreach($products as $product)
+                                                <option value="{{ $product['id'] }}">{{ $product['name'] }} (Stok: {{ $product['quantity'] }})</option>
+                                            @endforeach
+                                        </select>
+                                        @error('product_id')
                                             <div class="invalid-feedback">{{ $message }}</div>
                                         @enderror
                                     </div>

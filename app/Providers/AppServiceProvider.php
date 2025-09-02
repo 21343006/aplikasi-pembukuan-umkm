@@ -3,6 +3,8 @@
 namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
+use App\Models\Capitalearly;
+use App\Observers\CapitalearlyObserver;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -19,6 +21,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        // Register observers
+        Capitalearly::observe(CapitalearlyObserver::class);
     }
 }

@@ -89,4 +89,50 @@ class User extends Authenticatable
 
         return '+' . $phone;
     }
+
+    // Relationships
+    public function products()
+    {
+        return $this->hasMany(Product::class);
+    }
+
+    public function incomes()
+    {
+        return $this->hasMany(Income::class);
+    }
+
+    public function expenditures()
+    {
+        return $this->hasMany(Expenditure::class);
+    }
+
+    public function capitals()
+    {
+        return $this->hasMany(Capital::class);
+    }
+
+    public function fixedCosts()
+    {
+        return $this->hasMany(FixedCost::class);
+    }
+
+    public function debts()
+    {
+        return $this->hasMany(Debt::class);
+    }
+
+    public function receivables()
+    {
+        return $this->hasMany(Receivable::class);
+    }
+
+    public function stockHistories()
+    {
+        return $this->hasMany(StockHistory::class);
+    }
+
+    public function capitalearly()
+    {
+        return $this->hasOne(Capitalearly::class);
+    }
 }

@@ -304,16 +304,55 @@
                                             </li>
                                         @endif
 
-                                        {{-- Pagination Elements --}}
-                                        @foreach ($paginatedExpenditures->getUrlRange(1, $paginatedExpenditures->lastPage()) as $page => $url)
-                                            @if ($page == $paginatedExpenditures->currentPage())
+                                        {{-- Smart Pagination Elements --}}
+                                        @php
+                                            $currentPage = $paginatedExpenditures->currentPage();
+                                            $lastPage = $paginatedExpenditures->lastPage();
+                                            $maxVisible = 7;
+                                            
+                                            if ($lastPage <= $maxVisible) {
+                                                $links = range(1, $lastPage);
+                                            } else {
+                                                $links = [];
+                                                $links[] = 1;
+                                                
+                                                $start = max(2, $currentPage - floor(($maxVisible - 4) / 2));
+                                                $end = min($lastPage - 1, $start + $maxVisible - 5);
+                                                
+                                                if ($end == $lastPage - 1) {
+                                                    $start = max(2, $end - $maxVisible + 5);
+                                                }
+                                                
+                                                if ($start > 2) {
+                                                    $links[] = 'ellipsis';
+                                                }
+                                                
+                                                for ($i = $start; $i <= $end; $i++) {
+                                                    $links[] = $i;
+                                                }
+                                                
+                                                if ($end < $lastPage - 1) {
+                                                    $links[] = 'ellipsis';
+                                                }
+                                                
+                                                if ($lastPage > 1) {
+                                                    $links[] = $lastPage;
+                                                }
+                                            }
+                                        @endphp
+                                        
+                                        @foreach ($links as $page)
+                                            @if ($page === 'ellipsis')
+                                                <li class="page-item ellipsis">
+                                                    <span class="page-link"></span>
+                                                </li>
+                                            @elseif ($page == $currentPage)
                                                 <li class="page-item active">
                                                     <span class="page-link">{{ $page }}</span>
                                                 </li>
                                             @else
                                                 <li class="page-item">
-                                                    <button class="page-link"
-                                                        wire:click="gotoPage({{ $page }})">
+                                                    <button class="page-link" wire:click="gotoPage({{ $page }})">
                                                         {{ $page }}
                                                     </button>
                                                 </li>

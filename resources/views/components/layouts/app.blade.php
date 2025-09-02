@@ -31,6 +31,251 @@
     <!-- Template Main CSS File -->
     <link href="/assets/css/style.css" rel="stylesheet">
 
+    <!-- Custom Pagination CSS -->
+    <style>
+        /* Global Pagination Styling - Improved for smaller arrows */
+        .pagination {
+            margin-bottom: 0;
+            font-size: 0.875rem;
+        }
+        
+        .pagination .page-link {
+            padding: 0.375rem 0.75rem;
+            font-size: 0.875rem;
+            border: 1px solid #dee2e6;
+            color: #007bff;
+            background-color: #fff;
+            transition: all 0.15s ease-in-out;
+            min-width: 38px;
+            text-align: center;
+        }
+        
+        /* Smaller arrows for next/previous */
+        .pagination .page-item:first-child .page-link,
+        .pagination .page-item:last-child .page-link {
+            padding: 0.375rem 0.5rem;
+            font-size: 0.7rem;
+            min-width: 32px;
+        }
+        
+        /* Even smaller for arrow icons */
+        .pagination .page-item:first-child .page-link i,
+        .pagination .page-item:last-child .page-link i {
+            font-size: 0.6rem;
+        }
+        
+        /* SVG arrows - make them much smaller */
+        .pagination .page-item:first-child .page-link svg,
+        .pagination .page-item:last-child .page-link svg {
+            width: 12px !important;
+            height: 12px !important;
+        }
+        
+        /* Bootstrap Icons in pagination - make them smaller */
+        .pagination .page-link i.bi {
+            font-size: 0.6rem;
+        }
+        
+        /* Custom pagination with smaller icons */
+        .pagination-sm .page-link i.bi {
+            font-size: 0.5rem;
+        }
+        
+        /* Number pages */
+        .pagination .page-item:not(:first-child):not(:last-child) .page-link {
+            padding: 0.375rem 0.6rem;
+            font-size: 0.8rem;
+            min-width: 36px;
+        }
+        
+        .pagination .page-link:hover {
+            color: #0056b3;
+            background-color: #e9ecef;
+            border-color: #dee2e6;
+        }
+        
+        .pagination .page-link:focus {
+            box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+            z-index: 3;
+        }
+        
+        .pagination .page-item.active .page-link {
+            background-color: #007bff;
+            border-color: #007bff;
+            color: #fff;
+            font-weight: bold;
+        }
+        
+        .pagination .page-item.disabled .page-link {
+            color: #6c757d;
+            background-color: #fff;
+            border-color: #dee2e6;
+        }
+        
+        /* Page indicator styling */
+        .pagination-info {
+            text-align: center;
+            margin-bottom: 0.5rem;
+            font-size: 0.875rem;
+            color: #6c757d;
+        }
+        
+        .pagination-info .current-page {
+            font-weight: bold;
+            color: #007bff;
+        }
+        
+        /* Responsive pagination */
+        @media (max-width: 768px) {
+            .pagination .page-link {
+                padding: 0.25rem 0.5rem;
+                font-size: 0.75rem;
+                min-width: 32px;
+            }
+            
+            .pagination .page-item:first-child .page-link,
+            .pagination .page-item:last-child .page-link {
+                padding: 0.25rem 0.4rem;
+                font-size: 0.6rem;
+                min-width: 28px;
+            }
+            
+            .pagination .page-item:first-child .page-link i,
+            .pagination .page-item:last-child .page-link i {
+                font-size: 0.5rem;
+            }
+            
+            .pagination .page-item:first-child .page-link svg,
+            .pagination .page-item:last-child .page-link svg {
+                width: 10px !important;
+                height: 10px !important;
+            }
+            
+            .pagination .page-link i.bi {
+                font-size: 0.5rem;
+            }
+            
+            .pagination-sm .page-link i.bi {
+                font-size: 0.4rem;
+            }
+        }
+
+        /* Pagination styles */
+        .pagination {
+            margin-bottom: 0;
+        }
+        
+        .pagination .page-link {
+            padding: 0.375rem 0.75rem;
+            font-size: 0.875rem;
+            border-radius: 0.25rem;
+            margin: 0 2px;
+        }
+        
+        /* First and last page links (arrows) */
+        .pagination .page-item:first-child .page-link,
+        .pagination .page-item:last-child .page-link {
+            padding: 0.375rem 0.5rem;
+            font-size: 0.75rem;
+        }
+        
+        /* Number pages */
+        .pagination .page-item:not(:first-child):not(:last-child) .page-link {
+            min-width: 35px;
+            text-align: center;
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .pagination .page-link {
+                padding: 0.25rem 0.5rem;
+                font-size: 0.75rem;
+                margin: 0 1px;
+            }
+            
+            .pagination .page-item:first-child .page-link,
+            .pagination .page-item:last-child .page-link {
+                padding: 0.25rem 0.375rem;
+                font-size: 0.625rem;
+            }
+            
+            .pagination .page-item:not(:first-child):not(:last-child) .page-link {
+                min-width: 30px;
+            }
+        }
+        
+        /* SVG arrows - make them much smaller */
+        .pagination .page-item:first-child .page-link svg,
+        .pagination .page-item:last-child .page-link svg {
+            width: 12px !important;
+            height: 12px !important;
+        }
+        
+        @media (max-width: 768px) {
+            .pagination .page-item:first-child .page-link svg,
+            .pagination .page-item:last-child .page-link svg {
+                width: 10px !important;
+                height: 10px !important;
+            }
+        }
+        
+        /* Bootstrap Icons in pagination - make them smaller */
+        .pagination .page-link i.bi {
+            font-size: 0.6rem;
+        }
+        
+        /* Custom pagination with smaller icons */
+        .pagination-sm .page-link i.bi {
+            font-size: 0.5rem;
+        }
+        
+        @media (max-width: 768px) {
+            .pagination .page-link i.bi {
+                font-size: 0.5rem;
+            }
+            .pagination-sm .page-link i.bi {
+                font-size: 0.4rem;
+            }
+        }
+        
+        /* Pagination info */
+        .pagination-info {
+            text-align: center;
+            margin-bottom: 0.5rem;
+            font-size: 0.875rem;
+            color: #6c757d;
+        }
+        
+        .pagination-info .current-page {
+            font-weight: bold;
+            color: #007bff;
+        }
+        
+        /* Smart pagination with ellipsis */
+        .pagination-smart .page-item.ellipsis {
+            pointer-events: none;
+        }
+        
+        .pagination-smart .page-item.ellipsis .page-link {
+            background: none;
+            border: none;
+            color: #6c757d;
+            padding: 0.375rem 0.25rem;
+        }
+        
+        .pagination-smart .page-item.ellipsis .page-link::after {
+            content: "...";
+            font-weight: bold;
+        }
+        
+        /* Hide ellipsis on mobile */
+        @media (max-width: 576px) {
+            .pagination-smart .page-item.ellipsis {
+                display: none;
+            }
+        }
+    </style>
+
     <!-- =======================================================
   * Template Name: NiceAdmin - v2.4.1
   * Template URL: https://bootstrapmade.com/nice-admin-bootstrap-admin-html-template/
@@ -147,6 +392,22 @@
                     href="{{ route('expenditures') }}">
                     <i class="bi bi-cart-dash"></i>
                     <span>Pengeluaran</span>
+                </a>
+            </li>
+
+            <li class="nav-item">
+                <a wire:navigate class="nav-link {{ request()->routeIs('stock.page') ? '' : 'collapsed' }}"
+                    href="{{ route('stock.page') }}">
+                    <i class="bi bi-box-seam"></i>
+                    <span>Stok Barang</span>
+                </a>
+            </li>
+
+            <li class="nav-item">
+                <a wire:navigate class="nav-link {{ request()->routeIs('debt.receivable') ? '' : 'collapsed' }}"
+                    href="{{ route('debt.receivable') }}">
+                    <i class="bi bi-journal-text"></i>
+                    <span>Buku Utang & Piutang</span>
                 </a>
             </li>
 

@@ -13,7 +13,9 @@ use App\Livewire\Reports\ProfitLoss;
 use App\Livewire\Reports\ReportbulananList;
 use App\Livewire\Reports\Reporttahunan;
 use App\Livewire\Simulations\WhatIfAnalysis;
+use App\Livewire\Stock\ProductStockPage;
 use App\Livewire\UserProfile;
+use App\Livewire\DebtReceivable;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
 
@@ -62,4 +64,11 @@ Route::middleware('auth')->group(function () {
     // Analysis Routes
     Route::get('/bep-form', BepForm::class)->name('bep.form');
     Route::get('/irr-analysis', IrrPage::class)->name('irr.analysis');
+
+    // Stock Management Route
+    Route::get('/stock', ProductStockPage::class)->name('stock.page');
+    Route::get('/stock/history', \App\Livewire\StockHistoryList::class)->name('stock.history');
+    
+    // Debt & Receivable Management Route
+    Route::get('/debt-receivable', DebtReceivable::class)->name('debt.receivable');
 });

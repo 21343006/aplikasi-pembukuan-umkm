@@ -1,38 +1,56 @@
 <main id="main" class="main">
     <div class="pagetitle">
         <h1>Internal Rate of Return (IRR)</h1>
+        <nav>
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ route('dashboard') }}">Dashboard</a></li>
+                <li class="breadcrumb-item active">Analisis IRR</li>
+            </ol>
+        </nav>
     </div>
 
     <section class="section">
         <div class="card">
             <div class="card-body">
-                <h5 class="card-title">Analisis Kelayakan Investasi dan Proyeksi Return</h5>
+                <h5 class="card-title">
+                    <i class="bi bi-graph-up"></i> Analisis Kelayakan Investasi dan Proyeksi Return
+                </h5>
 
                 {{-- Filter Section --}}
                 <div class="row mt-3">
-                    <div class="col-md-3">
-                        <label for="filterYear">Pilih Tahun Analisis</label>
-                        <select wire:model.live="filterYear" class="form-control">
+                    <div class="col-md-2">
+                        <label for="filterYear" class="form-label">Tahun Analisis</label>
+                        <select wire:model.live="filterYear" class="form-select">
                             <option value="">Pilih Tahun</option>
                             @for($year = 2020; $year <= now()->year + 2; $year++)
                                 <option value="{{ $year }}">{{ $year }}</option>
                             @endfor
                         </select>
                     </div>
-                    <div class="col-md-3">
-                        <label for="discountRate">Discount Rate (%)</label>
+                    <div class="col-md-2">
+                        <label for="discountRate" class="form-label">Discount Rate (%)</label>
                         <input type="number" wire:model.live="discountRate" step="0.1" min="0" max="100" 
-                               class="form-control" placeholder="Contoh: 10">
+                               class="form-control" placeholder="12">
                     </div>
-                    <div class="col-md-3 d-flex align-items-end">
-                        <button wire:click="toggleCalculation" class="btn btn-info">
+                    <div class="col-md-2">
+                        <label for="growthRate" class="form-label">Growth Rate (%)</label>
+                        <input type="number" wire:model.live="growthRate" step="0.1" min="0" max="50" 
+                               class="form-control" placeholder="5">
+                    </div>
+                    <div class="col-md-2">
+                        <label for="inflationRate" class="form-label">Inflation Rate (%)</label>
+                        <input type="number" wire:model.live="inflationRate" step="0.1" min="0" max="20" 
+                               class="form-control" placeholder="3">
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end">
+                        <button wire:click="toggleCalculation" class="btn btn-info btn-sm">
                             <i class="bi bi-calculator"></i>
-                            {{ $showCalculation ? 'Sembunyikan' : 'Tampilkan' }} Detail Perhitungan
+                            {{ $showCalculation ? 'Sembunyikan' : 'Tampilkan' }} Detail
                         </button>
                     </div>
-                    <div class="col-md-3 d-flex align-items-end justify-content-end">
-                        <button wire:click="exportData" class="btn btn-success">
-                            <i class="bi bi-download"></i> Export Data
+                    <div class="col-md-2 d-flex align-items-end justify-content-end">
+                        <button wire:click="exportData" class="btn btn-success btn-sm">
+                            <i class="bi bi-download"></i> Export
                         </button>
                     </div>
                 </div>
@@ -40,112 +58,100 @@
                 @if($filterYear)
                     {{-- Key Metrics Cards --}}
                     <div class="row mt-4">
-                        <div class="col-md-3">
-                            <div class="card bg-primary text-white">
+                        <div class="col-xl-3 col-md-6">
+                            <div class="card info-card sales-card">
                                 <div class="card-body">
-                                    <div class="d-flex justify-content-between">
-                                        <div>
-                                            <small>Internal Rate of Return</small>
-                                            <h3 class="mb-1">
+                                    <h5 class="card-title">Internal Rate of Return</h5>
+                                    <div class="d-flex align-items-center">
+                                        <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
+                                            <i class="bi bi-graph-up-arrow"></i>
+                                        </div>
+                                        <div class="ps-3">
+                                            <h6>
                                                 @if($irr !== null)
                                                     {{ number_format($irr, 2) }}%
                                                 @else
                                                     N/A
                                                 @endif
-                                            </h3>
-                                            <small class="{{ $this->getIrrStatus()['class'] ?? '' }}">
+                                            </h6>
+                                            <span class="{{ $this->getIrrStatus()['class'] ?? '' }}">
                                                 {{ $this->getIrrStatus()['message'] ?? '' }}
-                                            </small>
-                                        </div>
-                                        <div class="align-self-center">
-                                            <i class="bi bi-graph-up-arrow display-6"></i>
+                                            </span>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="col-md-3">
-                            <div class="card bg-success text-white">
+                        <div class="col-xl-3 col-md-6">
+                            <div class="card info-card customers-card">
                                 <div class="card-body">
-                                    <div class="d-flex justify-content-between">
-                                        <div>
-                                            <small>Net Present Value</small>
-                                            <h3 class="mb-1">
+                                    <h5 class="card-title">Net Present Value</h5>
+                                    <div class="d-flex align-items-center">
+                                        <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
+                                            <i class="bi bi-cash-stack"></i>
+                                        </div>
+                                        <div class="ps-3">
+                                            <h6>
                                                 @if($npv !== null)
                                                     Rp {{ number_format($npv / 1000000, 1) }}M
                                                 @else
                                                     N/A
                                                 @endif
-                                            </h3>
-                                            <small class="{{ $this->getNpvStatus()['class'] ?? '' }}">
+                                            </h6>
+                                            <span class="{{ $this->getNpvStatus()['class'] ?? '' }}">
                                                 {{ $this->getNpvStatus()['message'] ?? '' }}
-                                            </small>
-                                        </div>
-                                        <div class="align-self-center">
-                                            <i class="bi bi-cash-stack display-6"></i>
+                                            </span>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="col-md-3">
-                            <div class="card bg-warning text-white">
+                        <div class="col-xl-3 col-md-6">
+                            <div class="card info-card revenue-card">
                                 <div class="card-body">
-                                    <div class="d-flex justify-content-between">
-                                        <div>
-                                            <small>Payback Period</small>
-                                            <h3 class="mb-1">
+                                    <h5 class="card-title">Payback Period</h5>
+                                    <div class="d-flex align-items-center">
+                                        <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
+                                            <i class="bi bi-clock-history"></i>
+                                        </div>
+                                        <div class="ps-3">
+                                            <h6>
                                                 @if($paybackPeriod !== null)
                                                     {{ number_format($paybackPeriod, 1) }}
                                                 @else
                                                     N/A
                                                 @endif
-                                            </h3>
-                                            <small>
-                                                @if($paybackPeriod && $paybackPeriod <= 12)
-                                                    Bulan (Dalam 1 tahun)
-                                                @elseif($paybackPeriod && $paybackPeriod <= 24)
-                                                    Bulan (Dalam 2 tahun)
-                                                @else
-                                                    Bulan (Lebih dari 2 tahun)
-                                                @endif
-                                            </small>
-                                        </div>
-                                        <div class="align-self-center">
-                                            <i class="bi bi-clock-history display-6"></i>
+                                            </h6>
+                                            <span class="{{ $this->getPaybackStatus()['class'] ?? '' }}">
+                                                {{ $this->getPaybackStatus()['message'] ?? '' }}
+                                            </span>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="col-md-3">
-                            <div class="card bg-info text-white">
+                        <div class="col-xl-3 col-md-6">
+                            <div class="card info-card sales-card">
                                 <div class="card-body">
-                                    <div class="d-flex justify-content-between">
-                                        <div>
-                                            <small>Profitability Index</small>
-                                            <h3 class="mb-1">
+                                    <h5 class="card-title">Profitability Index</h5>
+                                    <div class="d-flex align-items-center">
+                                        <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
+                                            <i class="bi bi-percent"></i>
+                                        </div>
+                                        <div class="ps-3">
+                                            <h6>
                                                 @if($profitabilityIndex !== null)
                                                     {{ number_format($profitabilityIndex, 2) }}
                                                 @else
                                                     N/A
                                                 @endif
-                                            </h3>
-                                            <small>
-                                                @if($profitabilityIndex && $profitabilityIndex > 1)
-                                                    Menguntungkan
-                                                @elseif($profitabilityIndex && $profitabilityIndex == 1)
-                                                    Break Even
-                                                @else
-                                                    Tidak Menguntungkan
-                                                @endif
-                                            </small>
-                                        </div>
-                                        <div class="align-self-center">
-                                            <i class="bi bi-percent display-6"></i>
+                                            </h6>
+                                            <span class="{{ $this->getProfitabilityIndexStatus()['class'] ?? '' }}">
+                                                {{ $this->getProfitabilityIndexStatus()['message'] ?? '' }}
+                                            </span>
                                         </div>
                                     </div>
                                 </div>
@@ -182,8 +188,14 @@
                                 </div>
                                 <div class="col-md">
                                     <div class="alert alert-warning text-center">
-                                        <strong>Total Modal Tetap</strong><br>
+                                        <strong>Total Biaya Tetap</strong><br>
                                         <span class="h5">Rp {{ number_format($this->getTotalFixedCost(), 0, ',', '.') }}</span>
+                                    </div>
+                                </div>
+                                <div class="col-md">
+                                    <div class="alert alert-info text-center">
+                                        <strong>Total Modal Tambahan</strong><br>
+                                        <span class="h5">Rp {{ number_format($this->getTotalCapital(), 0, ',', '.') }}</span>
                                     </div>
                                 </div>
                                 <div class="col-md">
@@ -201,36 +213,38 @@
                         <div class="card-body">
                             <h6 class="card-title">
                                 <i class="bi bi-calendar-range"></i>
-                                Proyeksi Cash Flow Tahunan (IRR Analysis)
+                                Proyeksi Cash Flow Tahunan ({{ $projectionYears }} Tahun)
                             </h6>
                             
                             <div class="table-responsive">
                                 <table class="table table-hover table-bordered">
                                     <thead class="table-primary">
                                         <tr class="text-center">
-                                            <th width="50%">TAHUN</th>
-                                            <th width="50%">Uang Masuk/Keluar</th>
+                                            <th width="20%">TAHUN</th>
+                                            <th width="40%">CASH FLOW</th>
+                                            <th width="40%">KETERANGAN</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         <tr>
                                             <td class="text-center fw-bold">0</td>
                                             <td class="text-end text-danger fw-bold">
-                                                - {{ number_format($modalAwal, 2, ',', '.') }}
+                                                - Rp {{ number_format($modalAwal, 0, ',', '.') }}
                                             </td>
+                                            <td class="text-muted">Initial Investment</td>
                                         </tr>
-                                        <tr>
-                                            <td class="text-center fw-bold">1</td>
-                                            <td class="text-end text-success fw-bold">
-                                                {{ number_format($this->getTotalNetCashFlow(), 2, ',', '.') }}
-                                            </td>
-                                        </tr>
-                                        @for($year = 2; $year <= 4; $year++)
+                                        @for($year = 1; $year <= $projectionYears; $year++)
                                             <tr>
                                                 <td class="text-center fw-bold">{{ $year }}</td>
-                                                <td class="text-end text-success fw-bold">
-                                                    {{ number_format($this->getTotalNetCashFlow(), 2, ',', '.') }}
-                                                    <small class="text-muted d-block">*Proyeksi berdasarkan tahun 1</small>
+                                                <td class="text-end {{ $this->getYearlyCashFlow($year) >= 0 ? 'text-success' : 'text-danger' }} fw-bold">
+                                                    {{ $this->getYearlyCashFlow($year) >= 0 ? 'Rp ' : '- Rp ' }}{{ number_format(abs($this->getYearlyCashFlow($year)), 0, ',', '.') }}
+                                                </td>
+                                                <td class="text-muted">
+                                                    @if($year == 1)
+                                                        Data Aktual Tahun {{ $filterYear }}
+                                                    @else
+                                                        Proyeksi (Growth: {{ $growthRate }}%, Inflation: {{ $inflationRate }}%)
+                                                    @endif
                                                 </td>
                                             </tr>
                                         @endfor
@@ -242,23 +256,16 @@
                                 <div class="col-md-6">
                                     <div class="alert alert-info">
                                         <h6 class="fw-bold">
-                                            <i class="bi bi-calculator"></i> IRR Calculation
+                                            <i class="bi bi-calculator"></i> Parameter Perhitungan
                                         </h6>
-                                        <p class="mb-2">
-                                            <strong>IRR:</strong> 
-                                            @if($irr !== null)
-                                                {{ number_format($irr, 0) }}%
-                                            @else
-                                                Tidak dapat dihitung
-                                            @endif
+                                        <p class="mb-1">
+                                            <strong>Discount Rate:</strong> {{ $discountRate }}% (Risk-free: {{ $riskFreeRate }}% + Risk Premium: {{ $riskPremium }}%)
+                                        </p>
+                                        <p class="mb-1">
+                                            <strong>Growth Rate:</strong> {{ $growthRate }}% per tahun
                                         </p>
                                         <p class="mb-0">
-                                            <strong>Tingkat Keuntungan per Tahun:</strong> 
-                                            @if($irr !== null)
-                                                {{ number_format($irr, 0) }}%
-                                            @else
-                                                N/A
-                                            @endif
+                                            <strong>Inflation Rate:</strong> {{ $inflationRate }}% per tahun
                                         </p>
                                     </div>
                                 </div>
@@ -268,8 +275,9 @@
                                             <i class="bi bi-info-circle"></i> Keterangan
                                         </h6>
                                         <p class="mb-0 small">
-                                            <strong>Info:</strong> Untuk tanda (-) itu adalah uang keluar/modal, 
-                                            dan untuk angka yang positif itu adalah uang masuk/pendapatan
+                                            <strong>Cash Flow Negatif:</strong> Uang keluar/modal<br>
+                                            <strong>Cash Flow Positif:</strong> Uang masuk/pendapatan<br>
+                                            <strong>IRR:</strong> Tingkat pengembalian internal yang membuat NPV = 0
                                         </p>
                                     </div>
                                 </div>
@@ -293,7 +301,8 @@
                                                 <th>Bulan</th>
                                                 <th class="text-end">Pendapatan</th>
                                                 <th class="text-end">Pengeluaran</th>
-                                                <th class="text-end">Modal Tetap</th>
+                                                <th class="text-end">Biaya Tetap</th>
+                                                <th class="text-end">Modal Tambahan</th>
                                                 <th class="text-end">Net Cash Flow</th>
                                                 <th class="text-end">Cumulative</th>
                                             </tr>
@@ -302,6 +311,7 @@
                                             {{-- Initial Investment Row --}}
                                             <tr class="table-secondary">
                                                 <td><strong>Initial Investment</strong></td>
+                                                <td class="text-end">-</td>
                                                 <td class="text-end">-</td>
                                                 <td class="text-end">-</td>
                                                 <td class="text-end">-</td>
@@ -327,6 +337,9 @@
                                                     <td class="text-end text-warning">
                                                         Rp {{ number_format($data['fixed_cost'], 0, ',', '.') }}
                                                     </td>
+                                                    <td class="text-end text-info">
+                                                        Rp {{ number_format($data['capital'], 0, ',', '.') }}
+                                                    </td>
                                                     <td class="text-end {{ $data['net_cash_flow'] >= 0 ? 'text-success' : 'text-danger' }}">
                                                         <strong>
                                                             {{ $data['net_cash_flow'] >= 0 ? 'Rp ' : '(Rp ' }}{{ number_format(abs($data['net_cash_flow']), 0, ',', '.') }}{{ $data['net_cash_flow'] < 0 ? ')' : '' }}
@@ -351,6 +364,9 @@
                                                 </td>
                                                 <td class="text-end text-warning">
                                                     <strong>Rp {{ number_format($this->getTotalFixedCost(), 0, ',', '.') }}</strong>
+                                                </td>
+                                                <td class="text-end text-info">
+                                                    <strong>Rp {{ number_format($this->getTotalCapital(), 0, ',', '.') }}</strong>
                                                 </td>
                                                 <td class="text-end {{ $this->getTotalNetCashFlow() >= 0 ? 'text-success' : 'text-danger' }}">
                                                     <strong>
@@ -499,18 +515,18 @@
                                                 <p class="mb-2">
                                                     <strong>PI:</strong> {{ number_format($profitabilityIndex, 2) }}
                                                 </p>
-                                                @if($profitabilityIndex > 1)
+                                                @if($profitabilityIndex > 1.5)
                                                     <div class="d-flex align-items-start">
                                                         <i class="bi bi-check-circle-fill text-success me-2 mt-1"></i>
                                                         <div>
-                                                            <strong>Interpretasi:</strong> Setiap Rp 1 investasi menghasilkan nilai sekarang sebesar Rp {{ number_format($profitabilityIndex, 2) }}. Menguntungkan!
+                                                            <strong>Interpretasi:</strong> Setiap Rp 1 investasi menghasilkan nilai sekarang sebesar Rp {{ number_format($profitabilityIndex, 2) }}. Sangat menguntungkan!
                                                         </div>
                                                     </div>
-                                                @elseif($profitabilityIndex == 1)
+                                                @elseif($profitabilityIndex > 1)
                                                     <div class="d-flex align-items-start">
                                                         <i class="bi bi-exclamation-triangle-fill text-warning me-2 mt-1"></i>
                                                         <div>
-                                                            <strong>Interpretasi:</strong> Investasi berada pada titik impas (break even).
+                                                            <strong>Interpretasi:</strong> Setiap Rp 1 investasi menghasilkan nilai sekarang sebesar Rp {{ number_format($profitabilityIndex, 2) }}. Menguntungkan.
                                                         </div>
                                                     </div>
                                                 @else
@@ -562,6 +578,15 @@
             style="top: 20px; right: 20px; z-index: 9999; max-width: 400px;">
             <i class="bi bi-exclamation-circle"></i>
             {{ session('error') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    @endif
+
+    @if (session()->has('info'))
+        <div class="alert alert-info alert-dismissible fade show position-fixed"
+            style="top: 20px; right: 20px; z-index: 9999; max-width: 400px;">
+            <i class="bi bi-info-circle"></i>
+            {{ session('info') }}
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
     @endif
