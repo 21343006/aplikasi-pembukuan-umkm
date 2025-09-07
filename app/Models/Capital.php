@@ -89,6 +89,59 @@ class Capital extends Model
         return $this->belongsTo(\App\Models\User::class);
     }
 
+    // Global scope untuk auto-filter berdasarkan user yang login
+    protected static function booted(): void
+    {
+        // Auto set user_id saat creating jika belum ada
+        static::creating(function (Capital $capital) {
+            if (!$capital->user_id && Auth::check()) {
+                $capital->user_id = Auth::id();
+            }
+            
+            // Set default jenis jika belum ada dan kolom jenis tersedia
+            if (self::hasColumn('jenis') && !$capital->jenis) {
+                $capital->jenis = 'masuk';
+            }
+        });
+
+        // Log activity saat data dibuat
+        static::created(function (Capital $capital) {
+            Log::info('Capital created', [
+                'id' => $capital->id,
+                'user_id' => $capital->user_id,
+                'jenis' => $capital->jenis ?? 'masuk',
+                'nominal' => $capital->nominal,
+                'tanggal' => Carbon::parse($capital->tanggal)->format('Y-m-d')
+            ]);
+        });
+
+        // Log activity saat data diupdate
+        static::updated(function (Capital $capital) {
+            Log::info('Capital updated', [
+                'id' => $capital->id,
+                'user_id' => $capital->user_id,
+                'changes' => $capital->getChanges()
+            ]);
+        });
+
+        // Log activity saat data dihapus
+        static::deleted(function (Capital $capital) {
+            Log::info('Capital deleted', [
+                'id' => $capital->id,
+                'user_id' => $capital->user_id,
+                'nominal' => $capital->nominal,
+                'jenis' => $capital->jenis ?? 'masuk'
+            ]);
+        });
+
+        // Global scope untuk auto-filter berdasarkan user yang login
+        static::addGlobalScope('user', function (Builder $query) {
+            if (Auth::check()) {
+                $query->where('user_id', Auth::id());
+            }
+        });
+    }
+
     /**
      * Scope untuk filter berdasarkan user yang login
      */
@@ -366,54 +419,6 @@ class Capital extends Model
         if (self::hasColumn('jenis')) {
             $this->attributes['jenis'] = strtolower($value);
         }
-    }
-
-    /**
-     * Boot method untuk model events
-     */
-    protected static function booted(): void
-    {
-        // Auto set user_id saat creating jika belum ada
-        static::creating(function (Capital $capital) {
-            if (!$capital->user_id && Auth::check()) {
-                $capital->user_id = Auth::id();
-            }
-            
-            // Set default jenis jika belum ada dan kolom jenis tersedia
-            if (self::hasColumn('jenis') && !$capital->jenis) {
-                $capital->jenis = 'masuk';
-            }
-        });
-
-        // Log activity saat data dibuat
-        static::created(function (Capital $capital) {
-            Log::info('Capital created', [
-                'id' => $capital->id,
-                'user_id' => $capital->user_id,
-                'jenis' => $capital->jenis ?? 'masuk',
-                'nominal' => $capital->nominal,
-                'tanggal' => Carbon::parse($capital->tanggal)->format('Y-m-d')
-            ]);
-        });
-
-        // Log activity saat data diupdate
-        static::updated(function (Capital $capital) {
-            Log::info('Capital updated', [
-                'id' => $capital->id,
-                'user_id' => $capital->user_id,
-                'changes' => $capital->getChanges()
-            ]);
-        });
-
-        // Log activity saat data dihapus
-        static::deleted(function (Capital $capital) {
-            Log::info('Capital deleted', [
-                'id' => $capital->id,
-                'user_id' => $capital->user_id,
-                'nominal' => $capital->nominal,
-                'jenis' => $capital->jenis ?? 'masuk'
-            ]);
-        });
     }
 
     /**

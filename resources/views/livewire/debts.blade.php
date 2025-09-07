@@ -92,6 +92,8 @@
                             <th scope="col">Kreditur</th>
                             <th scope="col">Deskripsi</th>
                             <th scope="col">Jumlah</th>
+                            <th scope="col">Dibayar</th>
+                            <th scope="col">Tanggal Dibayar</th>
                             <th scope="col">Jatuh Tempo</th>
                             <th scope="col">Status</th>
                             <th scope="col">Aksi</th>
@@ -106,8 +108,19 @@
                                 <td>{{ Str::limit($debt->description, 50) }}</td>
                                 <td>
                                     <strong>Rp {{ number_format($debt->amount, 0, ',', '.') }}</strong>
-                                    @if($debt->paid_amount > 0)
-                                        <br><small class="text-muted">Dibayar: Rp {{ number_format($debt->paid_amount, 0, ',', '.') }}</small>
+                                </td>
+                                <td>
+                                    @if($debt->paid_amount && $debt->paid_amount > 0)
+                                        <strong class="text-success">Rp {{ number_format($debt->paid_amount, 0, ',', '.') }}</strong>
+                                    @else
+                                        <span class="text-muted">Belum Dibayar</span>
+                                    @endif
+                                </td>
+                                <td>
+                                    @if($debt->paid_date)
+                                        <span class="text-success">{{ $debt->paid_date->format('d/m/Y') }}</span>
+                                    @else
+                                        <span class="text-muted">-</span>
                                     @endif
                                 </td>
                                 <td>
@@ -137,7 +150,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="6" class="text-center text-muted">
+                                <td colspan="8" class="text-center text-muted">
                                     <i class="bi bi-inbox fs-1 d-block mb-2"></i>
                                     Belum ada data utang
                                 </td>
@@ -254,8 +267,8 @@
 
     <!-- Form Modal -->
     @if($showForm)
-        <div class="modal fade show" style="display: block;" tabindex="-1">
-            <div class="modal-dialog">
+        <div class="modal fade show" style="display: block; z-index: 10000;" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content">
                     <div class="modal-header">
                         <h5 class="modal-title">{{ $editingDebtId ? 'Edit Utang' : 'Tambah Utang Baru' }}</h5>
@@ -303,13 +316,13 @@
                 </div>
             </div>
         </div>
-        <div class="modal-backdrop fade show"></div>
+        <div class="modal-backdrop fade show" style="z-index: 9998;"></div>
     @endif
 
     <!-- Payment Modal -->
     @if($showPaymentForm && $selectedDebt)
-        <div class="modal fade show" style="display: block;" tabindex="-1">
-            <div class="modal-dialog">
+        <div class="modal fade show" style="display: block; z-index: 10000;" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content">
                     <div class="modal-header">
                         <h5 class="modal-title">Catat Pembayaran</h5>
@@ -321,7 +334,7 @@
                                 <h6 class="alert-heading">Informasi Utang</h6>
                                 <p class="mb-1"><strong>Kreditur:</strong> {{ $selectedDebt->creditor_name }}</p>
                                 <p class="mb-1"><strong>Total Utang:</strong> Rp {{ number_format($selectedDebt->amount, 0, ',', '.') }}</p>
-                                <p class="mb-1"><strong>Sudah Dibayar:</strong> Rp {{ number_format($selectedDebt->paid_amount, 0, ',', '.') }}</p>
+                                <p class="mb-1"><strong>Sudah Dibayar:</strong> Rp {{ number_format($selectedDebt->paid_amount ?? 0, 0, ',', '.') }}</p>
                                 <p class="mb-0"><strong>Sisa:</strong> <span class="text-danger">Rp {{ number_format($selectedDebt->remaining_amount, 0, ',', '.') }}</span></p>
                             </div>
 
@@ -348,6 +361,6 @@
                 </div>
             </div>
         </div>
-        <div class="modal-backdrop fade show"></div>
+        <div class="modal-backdrop fade show" style="z-index: 9998;"></div>
     @endif
 </div>

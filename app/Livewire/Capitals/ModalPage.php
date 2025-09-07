@@ -497,26 +497,6 @@ class ModalPage extends Component
         return collect($this->capitals);
     }
 
-    /**
-     * Method untuk refresh struktur tabel (utility)
-     */
-    public function refreshTableStructure()
-    {
-        try {
-            // Clear cache
-            $this->columnCache = [];
-            Capital::clearColumnCache();
-            
-            // Reload data
-            $this->loadCapitals();
-            
-            session()->flash('message', 'Struktur tabel berhasil disegarkan.');
-            
-        } catch (\Exception $e) {
-            Log::error('Error refreshing table structure: ' . $e->getMessage());
-            session()->flash('error', 'Gagal menyegarkan struktur tabel.');
-        }
-    }
 
     /**
      * Method untuk mendapatkan informasi struktur tabel

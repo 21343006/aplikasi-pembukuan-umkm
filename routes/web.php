@@ -2,7 +2,7 @@
 
 use App\Livewire\Auth\Login;
 use App\Livewire\Auth\Register;
-use App\Livewire\Beps\BepForm;
+
 use App\Livewire\Capitals\CapitalearlyForm;
 use App\Livewire\Capitals\ModalPage;
 use App\Livewire\Expenditures\ExpenditurePage;
@@ -16,6 +16,7 @@ use App\Livewire\Simulations\WhatIfAnalysis;
 use App\Livewire\Stock\ProductStockPage;
 use App\Livewire\UserProfile;
 use App\Livewire\DebtReceivable;
+use App\Livewire\Analysis\BepCalculator;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
 
@@ -62,7 +63,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/profit-loss', ProfitLoss::class)->name('profit.loss');
 
     // Analysis Routes
-    Route::get('/bep-form', BepForm::class)->name('bep.form');
+    Route::get('/bep-calculator', BepCalculator::class)->name('bep.calculator');
     Route::get('/irr-analysis', IrrPage::class)->name('irr.analysis');
 
     // Stock Management Route

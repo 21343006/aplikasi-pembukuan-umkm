@@ -37,15 +37,15 @@ class Receivables extends Component
 
     public function render()
     {
-        $receivables = Receivable::where('user_id', auth()->id())
-            ->orderBy('due_date', 'asc')
+        $receivables = Receivable::
+            orderBy('due_date', 'asc')
             ->paginate(10);
 
-        $totalReceivables = Receivable::where('user_id', auth()->id())->sum('amount');
-        $totalPaid = Receivable::where('user_id', auth()->id())->sum('paid_amount');
+        $totalReceivables = Receivable::sum('amount');
+        $totalPaid = Receivable::where('paid_amount', '>', 0)->sum('paid_amount');
         $totalRemaining = $totalReceivables - $totalPaid;
-        $overdueCount = Receivable::where('user_id', auth()->id())
-            ->where('due_date', '<', now())
+        $overdueCount = Receivable::
+            where('due_date', '<', now())
             ->where('status', '!=', 'paid')
             ->count();
 
@@ -61,14 +61,32 @@ class Receivables extends Component
 
     public function edit($id)
     {
-        $receivable = Receivable::findOrFail($id);
-        $this->editingReceivableId = $id;
-        $this->debtor_name = $receivable->debtor_name;
-        $this->description = $receivable->description;
-        $this->amount = $receivable->amount;
-        $this->due_date = $receivable->due_date->format('Y-m-d');
-        $this->notes = $receivable->notes;
-        $this->showForm = true;
+        try {
+            // Pastikan user yang login
+            if (!auth()->check()) {
+                session()->flash('error', 'Anda harus login terlebih dahulu.');
+                return;
+            }
+
+            // Gunakan global scope untuk memastikan hanya data user yang sedang login
+            $receivable = Receivable::findOrFail($id);
+            
+            // Double check: pastikan receivable milik user yang sedang login
+            if ($receivable->user_id !== auth()->id()) {
+                session()->flash('error', 'Anda tidak memiliki akses ke data ini.');
+                return;
+            }
+
+            $this->editingReceivableId = $id;
+            $this->debtor_name = $receivable->debtor_name;
+            $this->description = $receivable->description;
+            $this->amount = $receivable->amount;
+            $this->due_date = $receivable->due_date->format('Y-m-d');
+            $this->notes = $receivable->notes;
+            $this->showForm = true;
+        } catch (\Exception $e) {
+            session()->flash('error', 'Data tidak ditemukan atau Anda tidak memiliki akses.');
+        }
     }
 
     public function save()
@@ -98,17 +116,53 @@ class Receivables extends Component
 
     public function delete($id)
     {
-        $receivable = Receivable::findOrFail($id);
-        $receivable->delete();
-        session()->flash('message', 'Piutang berhasil dihapus!');
+        try {
+            // Pastikan user yang login
+            if (!auth()->check()) {
+                session()->flash('error', 'Anda harus login terlebih dahulu.');
+                return;
+            }
+
+            // Gunakan global scope untuk memastikan hanya data user yang sedang login
+            $receivable = Receivable::findOrFail($id);
+            
+            // Double check: pastikan receivable milik user yang sedang login
+            if ($receivable->user_id !== auth()->id()) {
+                session()->flash('error', 'Anda tidak memiliki akses ke data ini.');
+                return;
+            }
+
+            $receivable->delete();
+            session()->flash('message', 'Piutang berhasil dihapus!');
+        } catch (\Exception $e) {
+            session()->flash('error', 'Data tidak ditemukan atau Anda tidak memiliki akses.');
+        }
     }
 
     public function showPayment($id)
     {
-        $this->selectedReceivable = Receivable::findOrFail($id);
-        $this->payment_amount = '';
-        $this->payment_date = now()->format('Y-m-d');
-        $this->showPaymentForm = true;
+        try {
+            // Pastikan user yang login
+            if (!auth()->check()) {
+                session()->flash('error', 'Anda harus login terlebih dahulu.');
+                return;
+            }
+
+            // Gunakan global scope untuk memastikan hanya data user yang sedang login
+            $this->selectedReceivable = Receivable::findOrFail($id);
+            
+            // Double check: pastikan receivable milik user yang sedang login
+            if ($this->selectedReceivable->user_id !== auth()->id()) {
+                session()->flash('error', 'Anda tidak memiliki akses ke data ini.');
+                return;
+            }
+
+            $this->payment_amount = '';
+            $this->payment_date = now()->format('Y-m-d');
+            $this->showPaymentForm = true;
+        } catch (\Exception $e) {
+            session()->flash('error', 'Data tidak ditemukan atau Anda tidak memiliki akses.');
+        }
     }
 
     public function recordPayment()
@@ -119,7 +173,8 @@ class Receivables extends Component
         ]);
 
         $receivable = $this->selectedReceivable;
-        $newPaidAmount = $receivable->paid_amount + $this->payment_amount;
+        $currentPaidAmount = $receivable->paid_amount ?? 0;
+        $newPaidAmount = $currentPaidAmount + $this->payment_amount;
         
         // Update status berdasarkan jumlah pembayaran
         if ($newPaidAmount >= $receivable->amount) {

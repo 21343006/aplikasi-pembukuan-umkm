@@ -36,10 +36,7 @@ class StockHistoryList extends Component
         // Get products for filter
         $products = Product::forCurrentUser()->orderBy('name')->get();
 
-        $query = StockHistory::with(['product', 'user'])
-            ->whereHas('product', function ($q) {
-                $q->where('user_id', auth()->id());
-            });
+        $query = StockHistory::with(['product', 'user']);
 
         // Filter by product
         if ($this->selectedProductId) {

@@ -24,5 +24,14 @@ class DatabaseSeeder extends Seeder
         // Expenditure dummy
         Expenditure::factory(10)->create();
         $this->call(DummyDataSeeder::class);
+        
+        // Seeder untuk usaha Bakso & Mie Ayam
+        $this->call(BaksoMieAyamSeeder::class);
+        
+        // Seeder untuk data detail tambahan
+        $this->call(DetailedBaksoSeeder::class);
+        
+        // Seeder untuk data realistis dan musiman
+        $this->call(RealisticBaksoSeeder::class);
     }
 }

@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Auth;
 
 class Product extends Model
 {
@@ -16,11 +18,16 @@ class Product extends Model
         'name',
         'quantity',
         'low_stock_threshold',
+        'cost_per_unit',
+        'selling_price',
+        'unit',
     ];
 
     protected $casts = [
         'quantity' => 'integer',
         'low_stock_threshold' => 'integer',
+        'cost_per_unit' => 'decimal:2',
+        'selling_price' => 'decimal:2',
     ];
 
     public function user(): BelongsTo
@@ -36,6 +43,16 @@ class Product extends Model
     public function stockHistories(): HasMany
     {
         return $this->hasMany(StockHistory::class);
+    }
+
+    // Global scope untuk auto-filter berdasarkan user yang login
+    protected static function booted(): void
+    {
+        static::addGlobalScope('user', function (Builder $query) {
+            if (Auth::check()) {
+                $query->where('user_id', Auth::id());
+            }
+        });
     }
 
     /**
@@ -83,7 +100,7 @@ class Product extends Model
      */
     public function scopeForCurrentUser($query)
     {
-        return $query->where('user_id', auth()->id());
+        return $query->where('user_id', Auth::id());
     }
 
     /**
@@ -91,7 +108,7 @@ class Product extends Model
      */
     public function scopeLowStock($query)
     {
-        return $query->whereRaw('quantity - (SELECT COALESCE(SUM(jumlah_terjual), 0) FROM incomes WHERE incomes.product_id = products.id) <= low_stock_threshold');
+        return $query->whereRaw('quantity - (SELECT COALESCE(SUM(jumlah_terjual), 0) FROM incomes WHERE incomes.product_id = products.id AND incomes.user_id = products.user_id) <= low_stock_threshold');
     }
 
     /**
@@ -99,7 +116,7 @@ class Product extends Model
      */
     public function scopeOutOfStock($query)
     {
-        return $query->whereRaw('quantity - (SELECT COALESCE(SUM(jumlah_terjual), 0) FROM incomes WHERE incomes.product_id = products.id) <= 0');
+        return $query->whereRaw('quantity - (SELECT COALESCE(SUM(jumlah_terjual), 0) FROM incomes WHERE incomes.product_id = products.id AND incomes.user_id = products.user_id) <= 0');
     }
 
     /**
@@ -143,7 +160,7 @@ class Product extends Model
     public function recordStockHistory($type, $quantityChange, $quantityBefore, $quantityAfter, $description, $referenceType = null, $referenceId = null)
     {
         return $this->stockHistories()->create([
-            'user_id' => auth()->id() ?? $this->user_id,
+            'user_id' => Auth::id() ?? $this->user_id,
             'type' => $type,
             'quantity_change' => $quantityChange,
             'quantity_before' => $quantityBefore,
@@ -199,6 +216,13 @@ class Product extends Model
     protected static function boot()
     {
         parent::boot();
+
+        static::creating(function ($product) {
+            // Auto set user_id saat creating jika belum ada
+            if (!$product->user_id && Auth::check()) {
+                $product->user_id = Auth::id();
+            }
+        });
 
         static::created(function ($product) {
             // Catat riwayat stok awal saat produk dibuat

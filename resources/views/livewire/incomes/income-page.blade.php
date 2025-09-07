@@ -60,6 +60,7 @@
                     </div>
                 </div>
 
+
                 {{-- Informasi Summary --}}
                 @if (count($monthlyTotals) > 0)
                     <div class="row mt-4">
@@ -685,4 +686,5 @@
             }, 5000);
         });
     </script>
+
 </main>

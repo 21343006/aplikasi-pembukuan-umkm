@@ -79,7 +79,7 @@
                                             $displayedCount = 0;
                                             $maxDisplay = 6;
                                         @endphp
-                                        @foreach (array_slice($monthlyTotals, 0, 6) as $period => $total)
+                                        @foreach (array_slice($monthlyTotals, 0, 6) as $period => $monthlyTotal)
                                             @php
                                                 // Perbaikan: Validasi yang lebih aman
                                                 if (!is_string($period) || empty($period)) {
@@ -102,7 +102,7 @@
                                                 $monthName = $monthNames[$month] ?? 'Unknown';
 
                                                 $isSelected = $filterMonth == $month && $filterYear == $year;
-                                                $total = is_numeric($total) ? (float) $total : 0;
+                                                $monthlyTotal = is_numeric($monthlyTotal) ? (float) $monthlyTotal : 0;
                                                 $displayedCount++;
                                             @endphp
                                             <div class="col-lg-2 col-md-4 col-sm-6 col-6 mb-3">
@@ -116,15 +116,15 @@
                                                             </small>
                                                         </div>
                                                         <div class="fw-bold">
-                                                            @if ($total >= 1000000)
+                                                            @if ($monthlyTotal >= 1000000)
                                                                 <span class="fs-6">Rp
-                                                                    {{ number_format($total / 1000000, 1, ',', '.') }}Jt</span>
-                                                            @elseif ($total >= 1000)
+                                                                    {{ number_format($monthlyTotal / 1000000, 1, ',', '.') }}Jt</span>
+                                                            @elseif ($monthlyTotal >= 1000)
                                                                 <span class="fs-6">Rp
-                                                                    {{ number_format($total / 1000, 0, ',', '.') }}Rb</span>
+                                                                    {{ number_format($monthlyTotal / 1000, 0, ',', '.') }}Rb</span>
                                                             @else
                                                                 <span class="small">Rp
-                                                                    {{ number_format($total, 0, ',', '.') }}</span>
+                                                                    {{ number_format($monthlyTotal, 0, ',', '.') }}</span>
                                                             @endif
                                                         </div>
                                                         @if ($isSelected)
@@ -143,7 +143,11 @@
                                                         <div class="col-md-6">
                                                             <strong><i class="bi bi-info-circle"></i> Total Keseluruhan Pengeluaran
                                                                 @if ($filterYear)
-                                                                    Tahun {{ $filterYear }}:
+                                                                    @if ($filterMonth)
+                                                                        Bulan {{ $this->monthName }} Tahun {{ $filterYear }}:
+                                                                    @else
+                                                                        Tahun {{ $filterYear }}:
+                                                                    @endif
                                                                 @else
                                                                     :
                                                                 @endif
@@ -152,9 +156,15 @@
                                                         <div class="col-md-6 text-md-end">
                                                             @php
                                                                 $grandTotal = 0;
-                                                                foreach ($monthlyTotals as $value) {
-                                                                    if (is_numeric($value)) {
-                                                                        $grandTotal += (float) $value;
+                                                                if ($filterMonth && $filterYear) {
+                                                                    // Gunakan total dari controller yang sudah dihitung dengan benar
+                                                                    $grandTotal = $total;
+                                                                } else {
+                                                                    // Jika hanya tahun yang dipilih, hitung total untuk semua bulan dalam tahun tersebut
+                                                                    foreach ($monthlyTotals as $key => $value) {
+                                                                        if (is_numeric($value)) {
+                                                                            $grandTotal += (float) $value;
+                                                                        }
                                                                     }
                                                                 }
                                                             @endphp
@@ -183,7 +193,8 @@
                         <div class="row gy-2 gx-2 align-items-center">
                             <div class="col-lg-6">
                                 <h5 class="card-title mb-0">
-                                    <i class="bi bi-table"></i> Data Pengeluaran - {{ $this->monthName }} {{ $filterYear }}
+                                    <i class="bi bi-table"></i> Data Pengeluaran - 
+                                    <span class="text-primary">{{ $this->monthName }} {{ $filterYear }}</span>
                                     @if ($total > 0)
                                         <span class="badge bg-danger ms-2">
                                             Total: Rp {{ number_format($total, 0, ',', '.') }}
@@ -209,6 +220,8 @@
                             </div>
                         </div>
                     </div>
+
+                    
 
                     @if ($paginatedExpenditures->count() > 0)
                         <div class="table-responsive mt-3">
@@ -262,8 +275,10 @@
                                 </tbody>
                                 <tfoot class="table-dark">
                                     <tr>
-                                        <th colspan="3" class="text-end">Total Pengeluaran {{ $this->monthName }}
-                                            {{ $filterYear }}:</th>
+                                        <th colspan="3" class="text-end">
+                                            Total Pengeluaran <span class="text-warning">{{ $this->monthName }} {{ $filterYear }}</span>:
+                                            <br><small class="text-muted">Bulan {{ $filterMonth }}, Tahun {{ $filterYear }}</small>
+                                        </th>
                                         <th>
                                             <span class="badge bg-danger fs-6">
                                                 Rp {{ number_format($total, 0, ',', '.') }}

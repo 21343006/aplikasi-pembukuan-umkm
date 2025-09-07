@@ -34,7 +34,7 @@ class ProductStockPage extends Component
     public function render()
     {
         return view('livewire.stock.product-stock-page', [
-            'products' => Product::where('user_id', Auth::id())->paginate(10),
+            'products' => Product::paginate(10),
         ]);
     }
 
@@ -82,19 +82,54 @@ class ProductStockPage extends Component
 
     public function edit($id)
     {
-        $product = Product::findOrFail($id);
-        $this->productId = $id;
-        $this->name = $product->name;
-        $this->quantity = $product->quantity;
-        $this->low_stock_threshold = $product->low_stock_threshold;
+        try {
+            // Pastikan user yang login
+            if (!Auth::check()) {
+                session()->flash('error', 'Anda harus login terlebih dahulu.');
+                return;
+            }
 
-        $this->openModal();
+            $product = Product::findOrFail($id);
+            
+            // Double check: pastikan product milik user yang sedang login
+            if ($product->user_id !== Auth::id()) {
+                session()->flash('error', 'Anda tidak memiliki akses ke data ini.');
+                return;
+            }
+
+            $this->productId = $id;
+            $this->name = $product->name;
+            $this->quantity = $product->quantity;
+            $this->low_stock_threshold = $product->low_stock_threshold;
+
+            $this->openModal();
+        } catch (\Exception $e) {
+            session()->flash('error', 'Data tidak ditemukan atau Anda tidak memiliki akses.');
+        }
     }
 
     public function delete($id)
     {
-        Product::find($id)->delete();
-        session()->flash('message', 'Produk berhasil dihapus.');
+        try {
+            // Pastikan user yang login
+            if (!Auth::check()) {
+                session()->flash('error', 'Anda harus login terlebih dahulu.');
+                return;
+            }
+
+            $product = Product::findOrFail($id);
+            
+            // Double check: pastikan product milik user yang sedang login
+            if ($product->user_id !== Auth::id()) {
+                session()->flash('error', 'Anda tidak memiliki akses ke data ini.');
+                return;
+            }
+
+            $product->delete();
+            session()->flash('message', 'Produk berhasil dihapus.');
+        } catch (\Exception $e) {
+            session()->flash('error', 'Data tidak ditemukan atau Anda tidak memiliki akses.');
+        }
     }
 
     // Add Stock Methods

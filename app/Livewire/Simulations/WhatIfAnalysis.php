@@ -42,8 +42,11 @@ class WhatIfAnalysis extends Component
     public $analysisResults = [];
     public $comparisonTable = [];
     
-    // Chart data
-    public $chartData = [];
+    // Analisis mendalam untuk UMKM
+    public $businessInsights = [];
+    public $recommendations = [];
+    public $riskAssessment = [];
+    public $actionPlan = [];
     
     // Array nama bulan
     public array $monthNames = [
@@ -108,8 +111,8 @@ class WhatIfAnalysis extends Component
             $month = (int) $this->selectedMonth;
 
             // Data pendapatan
-            $incomes = Income::where('user_id', Auth::id())
-                ->whereYear('tanggal', $year)
+            $incomes = Income::
+                whereYear('tanggal', $year)
                 ->whereMonth('tanggal', $month)
                 ->get();
 
@@ -121,20 +124,20 @@ class WhatIfAnalysis extends Component
             $avgPrice = $totalUnits > 0 ? $totalRevenue / $totalUnits : 0;
 
             // Data pengeluaran variabel
-            $totalVariableCost = Expenditure::where('user_id', Auth::id())
-                ->whereYear('tanggal', $year)
+            $totalVariableCost = Expenditure::
+                whereYear('tanggal', $year)
                 ->whereMonth('tanggal', $month)
                 ->sum('jumlah');
 
             // Data biaya tetap
-            $totalFixedCost = FixedCost::where('user_id', Auth::id())
-                ->whereYear('tanggal', $year)
+            $totalFixedCost = FixedCost::
+                whereYear('tanggal', $year)
                 ->whereMonth('tanggal', $month)
                 ->sum('nominal');
 
             // Data modal
-            $totalCapital = Capital::where('user_id', Auth::id())
-                ->whereYear('tanggal', $year)
+            $totalCapital = Capital::
+                whereYear('tanggal', $year)
                 ->whereMonth('tanggal', $month)
                 ->where('jenis', 'keluar')
                 ->sum('nominal');
@@ -166,7 +169,7 @@ class WhatIfAnalysis extends Component
         $this->scenarios = [
             'baseline' => [
                 'name' => 'Skenario Baseline',
-                'description' => 'Kondisi aktual saat ini',
+                'description' => 'Kondisi aktual saat ini tanpa perubahan',
                 'price_change' => 0,
                 'volume_change' => 0,
                 'cost_change' => 0,
@@ -174,35 +177,59 @@ class WhatIfAnalysis extends Component
             ],
             'optimistic' => [
                 'name' => 'Skenario Optimis',
-                'description' => 'Harga naik 10%, volume naik 20%, biaya turun 5%',
-                'price_change' => 10,
-                'volume_change' => 20,
-                'cost_change' => -5,
+                'description' => 'Kondisi terbaik yang bisa terjadi - harga naik, volume naik, biaya turun',
+                'price_change' => 15,
+                'volume_change' => 30,
+                'cost_change' => -10,
+                'fixed_cost_change' => -5
+            ],
+            'realistic' => [
+                'name' => 'Skenario Realistis',
+                'description' => 'Kondisi yang paling mungkin terjadi - perubahan moderat',
+                'price_change' => 5,
+                'volume_change' => 10,
+                'cost_change' => 0,
                 'fixed_cost_change' => 0
             ],
             'pessimistic' => [
                 'name' => 'Skenario Pesimis',
-                'description' => 'Harga turun 5%, volume turun 15%, biaya naik 10%',
-                'price_change' => -5,
-                'volume_change' => -15,
-                'cost_change' => 10,
-                'fixed_cost_change' => 5
+                'description' => 'Kondisi terburuk yang bisa terjadi - harga turun, volume turun, biaya naik',
+                'price_change' => -10,
+                'volume_change' => -20,
+                'cost_change' => 15,
+                'fixed_cost_change' => 10
             ],
             'cost_optimization' => [
-                'name' => 'Optimasi Biaya',
-                'description' => 'Fokus pada pengurangan biaya variabel dan tetap',
+                'name' => 'Strategi Optimasi Biaya',
+                'description' => 'Fokus pada pengurangan biaya operasional untuk meningkatkan margin',
                 'price_change' => 0,
                 'volume_change' => 0,
-                'cost_change' => -15,
-                'fixed_cost_change' => -10
+                'cost_change' => -20,
+                'fixed_cost_change' => -15
             ],
-            'price_volume' => [
-                'name' => 'Strategi Harga & Volume',
-                'description' => 'Harga naik 5%, volume naik 25%',
-                'price_change' => 5,
-                'volume_change' => 25,
-                'cost_change' => 0,
+            'growth_strategy' => [
+                'name' => 'Strategi Pertumbuhan',
+                'description' => 'Fokus pada peningkatan volume penjualan dan harga',
+                'price_change' => 8,
+                'volume_change' => 35,
+                'cost_change' => 5,
                 'fixed_cost_change' => 0
+            ],
+            'market_expansion' => [
+                'name' => 'Ekspansi Pasar',
+                'description' => 'Strategi untuk masuk ke pasar baru dengan investasi tambahan',
+                'price_change' => 0,
+                'volume_change' => 50,
+                'cost_change' => 10,
+                'fixed_cost_change' => 25
+            ],
+            'crisis_management' => [
+                'name' => 'Manajemen Krisis',
+                'description' => 'Strategi bertahan saat kondisi ekonomi sulit',
+                'price_change' => -5,
+                'volume_change' => -30,
+                'cost_change' => -15,
+                'fixed_cost_change' => -20
             ]
         ];
 
@@ -250,11 +277,15 @@ class WhatIfAnalysis extends Component
             );
             $this->analysisResults['what_if'] = $whatIf;
 
-            // Skenario ekstrem untuk chart
-            $this->generateChartData();
 
             // Buat tabel perbandingan
             $this->createComparisonTable();
+            
+            // Generate analisis mendalam untuk UMKM
+            $this->generateBusinessInsights();
+            $this->generateRecommendations();
+            $this->assessRisk();
+            $this->createActionPlan();
 
         } catch (\Exception $e) {
             session()->flash('error', 'Error in analysis: ' . $e->getMessage());
@@ -326,72 +357,6 @@ class WhatIfAnalysis extends Component
         ];
     }
 
-    /**
-     * Generate data untuk chart
-     */
-    private function generateChartData()
-    {
-        $this->chartData = [];
-
-        // Revenue comparison
-        $this->chartData['revenue'] = [
-            'labels' => ['Aktual', 'What If'],
-            'datasets' => [
-                [
-                    'label' => 'Pendapatan',
-                    'data' => [
-                        (float) $this->actualData['revenue'],
-                        (float) ($this->analysisResults['what_if']['revenue'] ?? 0)
-                    ],
-                    'backgroundColor' => ['#28a745', '#007bff'],
-                    'borderColor' => ['#28a745', '#007bff'],
-                    'borderWidth' => 2
-                ]
-            ]
-        ];
-
-        // Profit comparison
-        $this->chartData['profit'] = [
-            'labels' => ['Aktual', 'What If'],
-            'datasets' => [
-                [
-                    'label' => 'Laba',
-                    'data' => [
-                        (float) $this->actualData['profit'],
-                        (float) ($this->analysisResults['what_if']['profit'] ?? 0)
-                    ],
-                    'backgroundColor' => ['#ffc107', '#dc3545'],
-                    'borderColor' => ['#ffc107', '#dc3545'],
-                    'borderWidth' => 2
-                ]
-            ]
-        ];
-
-        // Cost breakdown
-        $this->chartData['costs'] = [
-            'labels' => ['Biaya Variabel', 'Biaya Tetap', 'Modal Keluar'],
-            'datasets' => [
-                [
-                    'label' => 'Aktual',
-                    'data' => [
-                        (float) $this->actualData['variable_cost'],
-                        (float) $this->actualData['fixed_cost'],
-                        (float) $this->actualData['capital_outflow']
-                    ],
-                    'backgroundColor' => ['#dc3545', '#fd7e14', '#6f42c1']
-                ],
-                [
-                    'label' => 'What If',
-                    'data' => [
-                        (float) ($this->analysisResults['what_if']['variable_cost'] ?? 0),
-                        (float) ($this->analysisResults['what_if']['fixed_cost'] ?? 0),
-                        (float) $this->actualData['capital_outflow']
-                    ],
-                    'backgroundColor' => ['#e83e8c', '#fd7e14', '#6f42c1']
-                ]
-            ]
-        ];
-    }
 
     /**
      * Buat tabel perbandingan
@@ -483,6 +448,359 @@ class WhatIfAnalysis extends Component
         $this->scenarioDescription = '';
         
         session()->flash('message', 'Skenario custom berhasil dibuat!');
+    }
+
+    /**
+     * Generate business insights untuk UMKM
+     */
+    private function generateBusinessInsights()
+    {
+        if (empty($this->analysisResults['what_if'])) {
+            return;
+        }
+
+        $whatIf = $this->analysisResults['what_if'];
+        $actual = $this->actualData;
+
+        $this->businessInsights = [
+            'profitability' => [
+                'title' => 'Analisis Profitabilitas',
+                'description' => $this->getProfitabilityInsight($whatIf, $actual),
+                'level' => $this->getProfitabilityLevel($whatIf['profit_margin']),
+                'icon' => $this->getProfitabilityIcon($whatIf['profit_margin'])
+            ],
+            'efficiency' => [
+                'title' => 'Efisiensi Operasional',
+                'description' => $this->getEfficiencyInsight($whatIf, $actual),
+                'level' => $this->getEfficiencyLevel($whatIf),
+                'icon' => 'bi-speedometer2'
+            ],
+            'growth' => [
+                'title' => 'Potensi Pertumbuhan',
+                'description' => $this->getGrowthInsight($whatIf, $actual),
+                'level' => $this->getGrowthLevel($whatIf['revenue_change_percent']),
+                'icon' => 'bi-graph-up-arrow'
+            ],
+            'sustainability' => [
+                'title' => 'Keberlanjutan Bisnis',
+                'description' => $this->getSustainabilityInsight($whatIf, $actual),
+                'level' => $this->getSustainabilityLevel($whatIf),
+                'icon' => 'bi-shield-check'
+            ]
+        ];
+    }
+
+    /**
+     * Generate recommendations berdasarkan analisis
+     */
+    private function generateRecommendations()
+    {
+        if (empty($this->analysisResults['what_if'])) {
+            return;
+        }
+
+        $whatIf = $this->analysisResults['what_if'];
+        $actual = $this->actualData;
+
+        $this->recommendations = [];
+
+        // Rekomendasi berdasarkan profit margin
+        if ($whatIf['profit_margin'] < 10) {
+            $this->recommendations[] = [
+                'type' => 'warning',
+                'title' => 'Margin Laba Rendah',
+                'description' => 'Margin laba di bawah 10% menunjukkan risiko tinggi. Pertimbangkan untuk:',
+                'actions' => [
+                    'Meningkatkan harga jual dengan value proposition yang lebih baik',
+                    'Mengurangi biaya operasional melalui efisiensi',
+                    'Mencari supplier dengan harga lebih kompetitif',
+                    'Diversifikasi produk dengan margin lebih tinggi'
+                ],
+                'priority' => 'high'
+            ];
+        }
+
+        // Rekomendasi berdasarkan break-even
+        if ($whatIf['break_even_units'] > $whatIf['units']) {
+            $this->recommendations[] = [
+                'type' => 'danger',
+                'title' => 'Belum Mencapai Break-Even',
+                'description' => 'Penjualan saat ini belum mencapai titik impas. Strategi yang bisa dilakukan:',
+                'actions' => [
+                    'Meningkatkan volume penjualan melalui marketing',
+                    'Menurunkan biaya tetap dengan negosiasi kontrak',
+                    'Meningkatkan harga jual secara bertahap',
+                    'Mencari peluang kerjasama untuk mengurangi biaya'
+                ],
+                'priority' => 'critical'
+            ];
+        }
+
+        // Rekomendasi berdasarkan margin of safety
+        if ($whatIf['margin_of_safety'] < 20) {
+            $this->recommendations[] = [
+                'type' => 'info',
+                'title' => 'Margin of Safety Rendah',
+                'description' => 'Margin of safety di bawah 20% menunjukkan sensitivitas tinggi terhadap perubahan. Saran:',
+                'actions' => [
+                    'Membangun cash reserve untuk menghadapi fluktuasi',
+                    'Diversifikasi sumber pendapatan',
+                    'Mengembangkan produk dengan permintaan stabil',
+                    'Membuat rencana kontinjensi untuk situasi sulit'
+                ],
+                'priority' => 'medium'
+            ];
+        }
+
+        // Rekomendasi positif
+        if ($whatIf['profit_margin'] > 20 && $whatIf['margin_of_safety'] > 30) {
+            $this->recommendations[] = [
+                'type' => 'success',
+                'title' => 'Kondisi Bisnis Sehat',
+                'description' => 'Bisnis dalam kondisi yang baik dengan margin dan keamanan yang memadai. Peluang:',
+                'actions' => [
+                    'Pertimbangkan ekspansi bisnis',
+                    'Investasi dalam teknologi untuk efisiensi',
+                    'Mengembangkan produk baru',
+                    'Meningkatkan kapasitas produksi'
+                ],
+                'priority' => 'low'
+            ];
+        }
+    }
+
+    /**
+     * Assess business risk
+     */
+    private function assessRisk()
+    {
+        if (empty($this->analysisResults['what_if'])) {
+            return;
+        }
+
+        $whatIf = $this->analysisResults['what_if'];
+        $actual = $this->actualData;
+
+        $riskFactors = [];
+        $riskScore = 0;
+
+        // Risk factor: Low profit margin
+        if ($whatIf['profit_margin'] < 10) {
+            $riskFactors[] = [
+                'factor' => 'Margin Laba Rendah',
+                'impact' => 'Risiko tinggi terhadap perubahan biaya',
+                'mitigation' => 'Tingkatkan efisiensi dan harga jual'
+            ];
+            $riskScore += 3;
+        }
+
+        // Risk factor: High break-even point
+        if ($whatIf['break_even_units'] > $whatIf['units'] * 1.2) {
+            $riskFactors[] = [
+                'factor' => 'Break-Even Point Tinggi',
+                'impact' => 'Sulit mencapai profitabilitas',
+                'mitigation' => 'Turunkan biaya tetap dan variabel'
+            ];
+            $riskScore += 2;
+        }
+
+        // Risk factor: Low margin of safety
+        if ($whatIf['margin_of_safety'] < 15) {
+            $riskFactors[] = [
+                'factor' => 'Margin of Safety Rendah',
+                'impact' => 'Sensitif terhadap penurunan penjualan',
+                'mitigation' => 'Bangun cash reserve dan diversifikasi'
+            ];
+            $riskScore += 2;
+        }
+
+        // Risk factor: High cost ratio
+        $costRatio = ($whatIf['total_cost'] / $whatIf['revenue']) * 100;
+        if ($costRatio > 90) {
+            $riskFactors[] = [
+                'factor' => 'Rasio Biaya Tinggi',
+                'impact' => 'Sedikit ruang untuk margin',
+                'mitigation' => 'Optimasi biaya operasional'
+            ];
+            $riskScore += 2;
+        }
+
+        $this->riskAssessment = [
+            'score' => $riskScore,
+            'level' => $this->getRiskLevel($riskScore),
+            'factors' => $riskFactors,
+            'overall_assessment' => $this->getOverallRiskAssessment($riskScore)
+        ];
+    }
+
+    /**
+     * Create action plan
+     */
+    private function createActionPlan()
+    {
+        if (empty($this->analysisResults['what_if'])) {
+            return;
+        }
+
+        $whatIf = $this->analysisResults['what_if'];
+        $actual = $this->actualData;
+
+        $this->actionPlan = [
+            'immediate' => $this->getImmediateActions($whatIf, $actual),
+            'short_term' => $this->getShortTermActions($whatIf, $actual),
+            'long_term' => $this->getLongTermActions($whatIf, $actual)
+        ];
+    }
+
+    // Helper methods untuk insights
+    private function getProfitabilityInsight($whatIf, $actual)
+    {
+        $margin = $whatIf['profit_margin'];
+        if ($margin > 20) {
+            return "Margin laba {$margin}% sangat baik! Bisnis Anda sangat profitable dan memiliki ruang untuk investasi atau ekspansi.";
+        } elseif ($margin > 10) {
+            return "Margin laba {$margin}% cukup baik. Bisnis Anda profitable dengan potensi untuk ditingkatkan lebih lanjut.";
+        } elseif ($margin > 0) {
+            return "Margin laba {$margin}% masih positif tapi rendah. Perlu strategi untuk meningkatkan profitabilitas.";
+        } else {
+            return "Margin laba negatif {$margin}%. Bisnis mengalami kerugian dan memerlukan tindakan segera.";
+        }
+    }
+
+    private function getEfficiencyInsight($whatIf, $actual)
+    {
+        $costRatio = ($whatIf['total_cost'] / $whatIf['revenue']) * 100;
+        if ($costRatio < 70) {
+            return "Rasio biaya {$costRatio}% sangat efisien! Operasional bisnis berjalan dengan baik.";
+        } elseif ($costRatio < 85) {
+            return "Rasio biaya {$costRatio}% cukup efisien. Ada ruang untuk optimasi lebih lanjut.";
+        } else {
+            return "Rasio biaya {$costRatio}% tinggi. Perlu fokus pada efisiensi operasional.";
+        }
+    }
+
+    private function getGrowthInsight($whatIf, $actual)
+    {
+        $revenueChange = $whatIf['revenue_change_percent'];
+        if ($revenueChange > 20) {
+            return "Pertumbuhan pendapatan {$revenueChange}% sangat tinggi! Bisnis menunjukkan momentum yang kuat.";
+        } elseif ($revenueChange > 5) {
+            return "Pertumbuhan pendapatan {$revenueChange}% positif. Bisnis berkembang dengan baik.";
+        } elseif ($revenueChange > -5) {
+            return "Pertumbuhan pendapatan {$revenueChange}% stabil. Perlu strategi untuk akselerasi.";
+        } else {
+            return "Pertumbuhan pendapatan {$revenueChange}% menurun. Perlu evaluasi dan perbaikan strategi.";
+        }
+    }
+
+    private function getSustainabilityInsight($whatIf, $actual)
+    {
+        $marginOfSafety = $whatIf['margin_of_safety'];
+        if ($marginOfSafety > 40) {
+            return "Margin of safety {$marginOfSafety}% sangat aman. Bisnis tahan terhadap fluktuasi pasar.";
+        } elseif ($marginOfSafety > 20) {
+            return "Margin of safety {$marginOfSafety}% cukup aman. Bisnis memiliki buffer yang memadai.";
+        } else {
+            return "Margin of safety {$marginOfSafety}% rendah. Bisnis sensitif terhadap perubahan penjualan.";
+        }
+    }
+
+    // Helper methods untuk level assessment
+    private function getProfitabilityLevel($margin)
+    {
+        if ($margin > 20) return 'excellent';
+        if ($margin > 10) return 'good';
+        if ($margin > 0) return 'fair';
+        return 'poor';
+    }
+
+    private function getEfficiencyLevel($whatIf)
+    {
+        $costRatio = ($whatIf['total_cost'] / $whatIf['revenue']) * 100;
+        if ($costRatio < 70) return 'excellent';
+        if ($costRatio < 85) return 'good';
+        return 'needs_improvement';
+    }
+
+    private function getGrowthLevel($revenueChange)
+    {
+        if ($revenueChange > 20) return 'excellent';
+        if ($revenueChange > 5) return 'good';
+        if ($revenueChange > -5) return 'stable';
+        return 'declining';
+    }
+
+    private function getSustainabilityLevel($whatIf)
+    {
+        $marginOfSafety = $whatIf['margin_of_safety'];
+        if ($marginOfSafety > 40) return 'excellent';
+        if ($marginOfSafety > 20) return 'good';
+        return 'risky';
+    }
+
+    private function getProfitabilityIcon($margin)
+    {
+        if ($margin > 20) return 'bi-trophy text-success';
+        if ($margin > 10) return 'bi-check-circle text-success';
+        if ($margin > 0) return 'bi-exclamation-triangle text-warning';
+        return 'bi-x-circle text-danger';
+    }
+
+    private function getRiskLevel($score)
+    {
+        if ($score <= 2) return 'low';
+        if ($score <= 5) return 'medium';
+        if ($score <= 8) return 'high';
+        return 'critical';
+    }
+
+    private function getOverallRiskAssessment($score)
+    {
+        if ($score <= 2) return 'Bisnis dalam kondisi aman dengan risiko rendah.';
+        if ($score <= 5) return 'Bisnis memiliki beberapa risiko yang perlu dipantau.';
+        if ($score <= 8) return 'Bisnis menghadapi risiko tinggi yang memerlukan perhatian segera.';
+        return 'Bisnis dalam kondisi kritis dan memerlukan tindakan darurat.';
+    }
+
+    private function getImmediateActions($whatIf, $actual)
+    {
+        $actions = [];
+        
+        if ($whatIf['profit_margin'] < 0) {
+            $actions[] = 'Evaluasi dan kurangi biaya operasional segera';
+            $actions[] = 'Tinjau ulang harga jual produk';
+        }
+        
+        if ($whatIf['break_even_units'] > $whatIf['units']) {
+            $actions[] = 'Fokus pada peningkatan volume penjualan';
+            $actions[] = 'Negosiasi ulang kontrak dengan supplier';
+        }
+        
+        return $actions;
+    }
+
+    private function getShortTermActions($whatIf, $actual)
+    {
+        $actions = [];
+        
+        $actions[] = 'Implementasi strategi marketing untuk meningkatkan penjualan';
+        $actions[] = 'Optimasi proses produksi untuk efisiensi';
+        $actions[] = 'Diversifikasi produk atau layanan';
+        $actions[] = 'Bangun relasi dengan supplier yang lebih baik';
+        
+        return $actions;
+    }
+
+    private function getLongTermActions($whatIf, $actual)
+    {
+        $actions = [];
+        
+        $actions[] = 'Kembangkan strategi bisnis jangka panjang';
+        $actions[] = 'Investasi dalam teknologi dan inovasi';
+        $actions[] = 'Ekspansi ke pasar atau segmen baru';
+        $actions[] = 'Bangun brand dan customer loyalty';
+        
+        return $actions;
     }
 
     /**

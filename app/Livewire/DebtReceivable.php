@@ -12,19 +12,19 @@ class DebtReceivable extends Component
 
     public function render()
     {
-        $totalDebts = Debt::where('user_id', auth()->id())->sum('amount');
-        $totalDebtsPaid = Debt::where('user_id', auth()->id())->sum('paid_amount');
+        $totalDebts = Debt::sum('amount');
+        $totalDebtsPaid = Debt::sum('paid_amount');
         $totalDebtsRemaining = $totalDebts - $totalDebtsPaid;
-        $overdueDebts = Debt::where('user_id', auth()->id())
-            ->where('due_date', '<', now())
+        $overdueDebts = Debt::
+            where('due_date', '<', now())
             ->where('status', '!=', 'paid')
             ->count();
 
-        $totalReceivables = Receivable::where('user_id', auth()->id())->sum('amount');
-        $totalReceivablesPaid = Receivable::where('user_id', auth()->id())->sum('paid_amount');
+        $totalReceivables = Receivable::sum('amount');
+        $totalReceivablesPaid = Receivable::sum('paid_amount');
         $totalReceivablesRemaining = $totalReceivables - $totalReceivablesPaid;
-        $overdueReceivables = Receivable::where('user_id', auth()->id())
-            ->where('due_date', '<', now())
+        $overdueReceivables = Receivable::
+            where('due_date', '<', now())
             ->where('status', '!=', 'paid')
             ->count();
 

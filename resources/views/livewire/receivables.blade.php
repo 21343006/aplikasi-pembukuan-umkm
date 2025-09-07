@@ -92,6 +92,8 @@
                             <th scope="col">Debitur</th>
                             <th scope="col">Deskripsi</th>
                             <th scope="col">Jumlah</th>
+                            <th scope="col">Diterima</th>
+                            <th scope="col">Tanggal Diterima</th>
                             <th scope="col">Jatuh Tempo</th>
                             <th scope="col">Status</th>
                             <th scope="col">Aksi</th>
@@ -106,8 +108,19 @@
                                 <td>{{ Str::limit($receivable->description, 50) }}</td>
                                 <td>
                                     <strong>Rp {{ number_format($receivable->amount, 0, ',', '.') }}</strong>
-                                    @if($receivable->paid_amount > 0)
-                                        <br><small class="text-muted">Diterima: Rp {{ number_format($receivable->paid_amount, 0, ',', '.') }}</small>
+                                </td>
+                                <td>
+                                    @if($receivable->paid_amount && $receivable->paid_amount > 0)
+                                        <strong class="text-success">Rp {{ number_format($receivable->paid_amount, 0, ',', '.') }}</strong>
+                                    @else
+                                        <span class="text-muted">Belum Diterima</span>
+                                    @endif
+                                </td>
+                                <td>
+                                    @if($receivable->paid_date)
+                                        <span class="text-success">{{ $receivable->paid_date->format('d/m/Y') }}</span>
+                                    @else
+                                        <span class="text-muted">-</span>
                                     @endif
                                 </td>
                                 <td>
@@ -137,7 +150,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="6" class="text-center text-muted">
+                                <td colspan="8" class="text-center text-muted">
                                     <i class="bi bi-inbox fs-1 d-block mb-2"></i>
                                     Belum ada data piutang
                                 </td>
@@ -254,8 +267,8 @@
 
     <!-- Form Modal -->
     @if($showForm)
-        <div class="modal fade show" style="display: block;" tabindex="-1">
-            <div class="modal-dialog">
+        <div class="modal fade show" style="display: block; z-index: 10000;" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content">
                     <div class="modal-header">
                         <h5 class="modal-title">{{ $editingReceivableId ? 'Edit Piutang' : 'Tambah Piutang Baru' }}</h5>
@@ -303,13 +316,13 @@
                 </div>
             </div>
         </div>
-        <div class="modal-backdrop fade show"></div>
+        <div class="modal-backdrop fade show" style="z-index: 9998;"></div>
     @endif
 
     <!-- Payment Modal -->
     @if($showPaymentForm && $selectedReceivable)
-        <div class="modal fade show" style="display: block;" tabindex="-1">
-            <div class="modal-dialog">
+        <div class="modal fade show" style="display: block; z-index: 10000;" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content">
                     <div class="modal-header">
                         <h5 class="modal-title">Catat Penerimaan</h5>
@@ -321,7 +334,7 @@
                                 <h6 class="alert-heading">Informasi Piutang</h6>
                                 <p class="mb-1"><strong>Debitur:</strong> {{ $selectedReceivable->debtor_name }}</p>
                                 <p class="mb-1"><strong>Total Piutang:</strong> Rp {{ number_format($selectedReceivable->amount, 0, ',', '.') }}</p>
-                                <p class="mb-1"><strong>Sudah Diterima:</strong> Rp {{ number_format($selectedReceivable->paid_amount, 0, ',', '.') }}</p>
+                                <p class="mb-1"><strong>Sudah Diterima:</strong> Rp {{ number_format($selectedReceivable->paid_amount ?? 0, 0, ',', '.') }}</p>
                                 <p class="mb-0"><strong>Sisa:</strong> <span class="text-warning">Rp {{ number_format($selectedReceivable->remaining_amount, 0, ',', '.') }}</span></p>
                             </div>
 
@@ -348,6 +361,6 @@
                 </div>
             </div>
         </div>
-        <div class="modal-backdrop fade show"></div>
+        <div class="modal-backdrop fade show" style="z-index: 9998;"></div>
     @endif
 </div>

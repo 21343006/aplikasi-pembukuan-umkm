@@ -189,7 +189,7 @@ class ProfitLoss extends Component
         }
     }
 
-    public function loadYearlyData()
+    private function loadYearlyData()
     {
         try {
             if (!Auth::check()) {
@@ -201,90 +201,91 @@ class ProfitLoss extends Component
             $this->yearlyData = [];
 
             foreach ($years as $year) {
-                $totalIncome = Income::where('user_id', Auth::id())
-                    ->whereYear('tanggal', $year)
+                // Gunakan model dengan global scope - tidak perlu where('user_id', Auth::id())
+                $totalIncome = Income::whereYear('tanggal', $year)
                     ->get()
                     ->sum(function ($income) {
                         return ((float) ($income->jumlah_terjual ?? 0)) * ((float) ($income->harga_satuan ?? 0));
                     });
 
-                $totalExpenditure = (float) Expenditure::where('user_id', Auth::id())
-                    ->whereYear('tanggal', $year)
+                $totalExpenditure = (float) Expenditure::whereYear('tanggal', $year)
                     ->sum('jumlah');
 
-                $totalFixedCost = (float) FixedCost::where('user_id', Auth::id())
-                    ->whereYear('tanggal', $year)
+                $totalFixedCost = (float) FixedCost::whereYear('tanggal', $year)
                     ->sum('nominal');
 
-                $totalExpenditure += $totalFixedCost;
+                $totalVariableCost = $totalExpenditure;
+                $grossProfit = $totalIncome - $totalVariableCost;
+                $netProfit = $grossProfit - $totalFixedCost;
 
-                $profit = $totalIncome - $totalExpenditure;
-                $margin = $totalIncome > 0 ? ($profit / $totalIncome) * 100 : 0;
-
-                $this->yearlyData[] = [
+                $this->yearlyData[$year] = [
                     'year' => $year,
                     'pendapatan' => $totalIncome,
                     'pengeluaran' => $totalExpenditure,
-                    'laba_rugi' => $profit,
-                    'margin' => $margin,
+                    'biaya_tetap' => $totalFixedCost,
+                    'biaya_variabel' => $totalVariableCost,
+                    'laba_kotor' => $grossProfit,
+                    'laba_rugi' => $netProfit,
+                    'margin' => $totalIncome > 0 ? ($netProfit / $totalIncome) * 100 : 0,
                 ];
             }
 
         } catch (\Exception $e) {
+            Log::error('Error in loadYearlyData: ' . $e->getMessage());
             $this->yearlyData = [];
-            Log::error('Error loading yearly data: ' . $e->getMessage());
         }
     }
 
     public function loadMonthlyData()
     {
         try {
-            if (!Auth::check() || !$this->selectedYear || !is_numeric($this->selectedYear)) {
+            if (!Auth::check() || !$this->selectedYear) {
                 $this->monthlyData = [];
                 return;
             }
 
-            $this->monthlyData = [];
             $year = (int) $this->selectedYear;
+            $this->monthlyData = [];
 
             for ($month = 1; $month <= 12; $month++) {
-                $monthIncome = Income::where('user_id', Auth::id())
-                    ->whereMonth('tanggal', $month)
+                // Gunakan model dengan global scope - tidak perlu where('user_id', Auth::id())
+                $monthIncome = Income::query()
                     ->whereYear('tanggal', $year)
+                    ->whereMonth('tanggal', $month)
                     ->get()
                     ->sum(function ($income) {
                         return ((float) ($income->jumlah_terjual ?? 0)) * ((float) ($income->harga_satuan ?? 0));
                     });
 
-                $monthExpenditure = (float) Expenditure::where('user_id', Auth::id())
-                    ->whereMonth('tanggal', $month)
+                $monthExpenditure = (float) Expenditure::query()
                     ->whereYear('tanggal', $year)
+                    ->whereMonth('tanggal', $month)
                     ->sum('jumlah');
 
-                $monthFixedCost = (float) FixedCost::where('user_id', Auth::id())
+                $monthFixedCost = (float) FixedCost::whereYear('tanggal', $year)
                     ->whereMonth('tanggal', $month)
-                    ->whereYear('tanggal', $year)
                     ->sum('nominal');
 
-                $monthTotalExpenditure = $monthExpenditure + $monthFixedCost;
+                $totalVariableCost = $monthExpenditure;
+                $grossProfit = $monthIncome - $totalVariableCost;
+                $netProfit = $grossProfit - $monthFixedCost;
 
-                $profit = $monthIncome - $monthTotalExpenditure;
-                $margin = $monthIncome > 0 ? ($profit / $monthIncome) * 100 : 0;
-
-                $this->monthlyData[] = [
+                $this->monthlyData[$month] = [
                     'month' => $month,
-                    'month_name' => $this->monthNames[$month],
+                    'month_name' => Carbon::create($year, $month, 1)->format('F'),
                     'pendapatan' => $monthIncome,
-                    'pengeluaran' => $monthTotalExpenditure,
+                    'pengeluaran' => $monthExpenditure,
                     'biaya_tetap' => $monthFixedCost,
-                    'laba_rugi' => $profit,
-                    'margin' => $margin,
+                    'biaya_variabel' => $totalVariableCost,
+                    'laba_kotor' => $grossProfit,
+                    'laba_rugi' => $netProfit,
+                    'margin' => $monthIncome > 0 ? ($netProfit / $monthIncome) * 100 : 0,
                 ];
             }
 
         } catch (\Exception $e) {
+            Log::error('Error in loadMonthlyData: ' . $e->getMessage());
             $this->monthlyData = [];
-            Log::error('Error loading monthly data: ' . $e->getMessage());
         }
     }
     
@@ -300,14 +301,14 @@ class ProfitLoss extends Component
             }
 
             // Fetch all incomes for the month once
-            $incomes = Income::where('user_id', Auth::id())
+            $incomes = Income::query()
                 ->whereYear('tanggal', $year)
                 ->whereMonth('tanggal', $month)
                 ->get()
                 ->groupBy(fn($item) => Carbon::parse($item->tanggal)->day);
 
             // Fetch all expenditures for the month once
-            $expenditures = Expenditure::where('user_id', Auth::id())
+            $expenditures = Expenditure::query()
                 ->whereYear('tanggal', $year)
                 ->whereMonth('tanggal', $month)
                 ->get()
@@ -317,13 +318,22 @@ class ProfitLoss extends Component
             $daysInMonth = Carbon::create($year, $month, 1)->daysInMonth;
 
             for ($day = 1; $day <= $daysInMonth; $day++) {
-                $dayIncome = $incomes->get($day, collect())->sum(function ($income) {
-                    return ($income->jumlah_terjual ?? 0) * ($income->harga_satuan ?? 0);
-                });
+                $dayIncome = Income::query()
+                    ->whereYear('tanggal', $year)
+                    ->whereMonth('tanggal', $month)
+                    ->whereDay('tanggal', $day)
+                    ->get()
+                    ->sum(function ($income) {
+                        return ((float) ($income->jumlah_terjual ?? 0)) * ((float) ($income->harga_satuan ?? 0));
+                    });
 
-                $dayExpenditure = $expenditures->get($day, collect())->sum('jumlah');
+                $dayExpenditure = (float) Expenditure::query()
+                    ->whereYear('tanggal', $year)
+                    ->whereMonth('tanggal', $month)
+                    ->whereDay('tanggal', $day)
+                    ->sum('jumlah');
 
-                $dayFixedCost = FixedCost::where('user_id', Auth::id())
+                $dayFixedCost = FixedCost::query()
                     ->whereYear('tanggal', $year)
                     ->whereMonth('tanggal', $month)
                     ->whereDay('tanggal', $day)
@@ -446,14 +456,14 @@ class ProfitLoss extends Component
             $hasData = false;
 
             foreach ($availableYears as $year) {
-                $yearIncome = Income::where('user_id', Auth::id())
+                $yearIncome = Income::query()
                     ->whereYear('tanggal', $year)
                     ->get()
                     ->sum(function ($income) {
                         return ((float) ($income->jumlah_terjual ?? 0)) * ((float) ($income->harga_satuan ?? 0));
                     });
 
-                $yearExpenditure = (float) Expenditure::where('user_id', Auth::id())
+                $yearExpenditure = (float) Expenditure::query()
                     ->whereYear('tanggal', $year)
                     ->sum('jumlah');
 
@@ -503,7 +513,7 @@ class ProfitLoss extends Component
             $hasData = false;
 
             for ($month = 1; $month <= 12; $month++) {
-                $monthIncome = Income::where('user_id', Auth::id())
+                $monthIncome = Income::query()
                     ->whereYear('tanggal', $year)
                     ->whereMonth('tanggal', $month)
                     ->get()
@@ -511,7 +521,7 @@ class ProfitLoss extends Component
                         return ((float) ($income->jumlah_terjual ?? 0)) * ((float) ($income->harga_satuan ?? 0));
                     });
 
-                $monthExpenditure = (float) Expenditure::where('user_id', Auth::id())
+                $monthExpenditure = (float) Expenditure::query()
                     ->whereYear('tanggal', $year)
                     ->whereMonth('tanggal', $month)
                     ->sum('jumlah');
@@ -568,7 +578,7 @@ class ProfitLoss extends Component
             $hasData = false;
 
             for ($day = 1; $day <= $daysInMonth; $day++) {
-                $dayIncome = Income::where('user_id', Auth::id())
+                $dayIncome = Income::query()
                     ->whereYear('tanggal', $year)
                     ->whereMonth('tanggal', $month)
                     ->whereDay('tanggal', $day)
@@ -577,7 +587,7 @@ class ProfitLoss extends Component
                         return ((float) ($income->jumlah_terjual ?? 0)) * ((float) ($income->harga_satuan ?? 0));
                     });
 
-                $dayExpenditure = (float) Expenditure::where('user_id', Auth::id())
+                $dayExpenditure = (float) Expenditure::query()
                     ->whereYear('tanggal', $year)
                     ->whereMonth('tanggal', $month)
                     ->whereDay('tanggal', $day)
@@ -701,7 +711,7 @@ class ProfitLoss extends Component
                 return 0.0;
             }
 
-            $query = Income::where('user_id', Auth::id());
+            $query = Income::query();
 
             switch ($this->reportType) {
                 case 'yearly':
@@ -739,8 +749,8 @@ class ProfitLoss extends Component
                 return 0.0;
             }
 
-            $expenditureQuery = Expenditure::where('user_id', Auth::id());
-            $fixedCostQuery = FixedCost::where('user_id', Auth::id());
+            $expenditureQuery = Expenditure::query();
+            $fixedCostQuery = FixedCost::query();
 
             switch ($this->reportType) {
                 case 'yearly':
@@ -798,62 +808,61 @@ class ProfitLoss extends Component
             $previousYear = $currentYear - 1;
 
             // Coba ambil dari yearlyData agar konsisten dengan tampilan
-            $currentIncome = null;
-            $previousIncome = null;
+            $currentYearData = collect($this->yearlyData)->firstWhere('year', $currentYear);
+            $previousYearData = collect($this->yearlyData)->firstWhere('year', $previousYear);
 
-            foreach ($this->yearlyData as $row) {
-                $rowYear = isset($row['year']) ? (int) $row['year'] : null;
-                if ($rowYear === $currentYear) {
-                    $currentIncome = (float) ($row['pendapatan'] ?? 0);
-                } elseif ($rowYear === $previousYear) {
-                    $previousIncome = (float) ($row['pendapatan'] ?? 0);
-                }
+            if (!$currentYearData || !$previousYearData) {
+                return null;
             }
 
-            // Jika yearlyData belum tersedia (mis. saat awal), fallback ke query
-            if ($currentIncome === null) {
-                $currentIncome = Income::where('user_id', Auth::id())
-                    ->whereYear('tanggal', $currentYear)
-                    ->get()
-                    ->sum(function ($income) {
-                        $computed = ((float) ($income->jumlah_terjual ?? 0)) * ((float) ($income->harga_satuan ?? 0));
-                        if ($computed <= 0 && isset($income->total)) {
-                            return (float) $income->total;
-                        }
-                        return (float) $computed;
-                    });
-            }
-            if ($previousIncome === null) {
-                $previousIncome = Income::where('user_id', Auth::id())
-                    ->whereYear('tanggal', $previousYear)
-                    ->get()
-                    ->sum(function ($income) {
-                        $computed = ((float) ($income->jumlah_terjual ?? 0)) * ((float) ($income->harga_satuan ?? 0));
-                        if ($computed <= 0 && isset($income->total)) {
-                            return (float) $income->total;
-                        }
-                        return (float) $computed;
-                    });
+            $currentPendapatan = $currentYearData['pendapatan'] ?? 0;
+            $previousPendapatan = $previousYearData['pendapatan'] ?? 0;
+
+            if ($previousPendapatan == 0) {
+                return $currentPendapatan > 0 ? 100.0 : 0.0;
             }
 
-            // Tangani kasus tepi agar selalu ada nilai yang ditampilkan
-            if ($previousIncome > 0) {
-                return (($currentIncome - $previousIncome) / $previousIncome) * 100.0;
-            }
+            return (($currentPendapatan - $previousPendapatan) / $previousPendapatan) * 100;
 
-            // Jika tahun sebelumnya 0:
-            // - Jika tahun sekarang juga 0: pertumbuhan 0%
-            // - Jika tahun sekarang > 0: anggap pertumbuhan 100% (dari basis 0)
-            if ($previousIncome == 0) {
-                return $currentIncome > 0 ? 100.0 : 0.0;
-            }
-
-            return 0.0;
         } catch (\Exception $e) {
             Log::error('Error calculating growth rate: ' . $e->getMessage());
             return null;
         }
     }
+
+    // Method untuk memaksa refresh data pendapatan dan laba
+    public function forceRefreshIncomeAndProfit()
+    {
+        try {
+            if (!Auth::check()) {
+                session()->flash('error', 'Anda harus login terlebih dahulu.');
+                return;
+            }
+
+            // Force refresh data berdasarkan report type
+            switch ($this->reportType) {
+                case 'yearly':
+                    $this->loadYearlyData();
+                    break;
+                case 'monthly':
+                    $this->loadMonthlyData();
+                    break;
+                case 'daily':
+                    $this->loadDailyData();
+                    break;
+            }
+
+            // Force refresh chart data
+            $this->dispatch('update-chart', chartData: $this->chartData, hasValidChartData: $this->hasValidChartData);
+
+            session()->flash('message', 'Data pendapatan dan laba berhasil di-refresh!');
+
+        } catch (\Exception $e) {
+            Log::error('Error in forceRefreshIncomeAndProfit: ' . $e->getMessage());
+            session()->flash('error', 'Gagal refresh data: ' . $e->getMessage());
+        }
+    }
+
 
     // ===============================
     // UTILITY METHODS
@@ -938,16 +947,22 @@ class ProfitLoss extends Component
                 return [now()->year];
             }
 
-            $incomeYears = Income::where('user_id', Auth::id())
-                ->whereNotNull('tanggal')
-                ->selectRaw('DISTINCT YEAR(tanggal) as year')
+            $incomeYears = Income::query()
+                ->selectRaw('YEAR(tanggal) as year')
+                ->distinct()
                 ->pluck('year')
+                ->filter()
+                ->sort()
+                ->values()
                 ->toArray();
 
-            $expenditureYears = Expenditure::where('user_id', Auth::id())
-                ->whereNotNull('tanggal')
-                ->selectRaw('DISTINCT YEAR(tanggal) as year')
+            $expenditureYears = Expenditure::query()
+                ->selectRaw('YEAR(tanggal) as year')
+                ->distinct()
                 ->pluck('year')
+                ->filter()
+                ->sort()
+                ->values()
                 ->toArray();
 
             $allYears = array_unique(array_merge($incomeYears, $expenditureYears));

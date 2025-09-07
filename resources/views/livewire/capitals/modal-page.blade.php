@@ -16,42 +16,6 @@
         </div>
 
         <section class="section">
-            {{-- Debug Info (hanya tampil di development) --}}
-            @if (app()->environment('local'))
-                <div class="card mb-3 border-info">
-                    <div class="card-header bg-info text-white">
-                        <i class="bi bi-info-circle me-2"></i>Debug Info (Development Only)
-                    </div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-3">
-                                <strong>Struktur Tabel:</strong><br>
-                                <small class="text-{{ $tableStructure['has_keperluan'] ? 'success' : 'danger' }}">
-                                    <i class="bi bi-{{ $tableStructure['has_keperluan'] ? 'check' : 'x' }}-circle me-1"></i>
-                                    Keperluan: {{ $tableStructure['has_keperluan'] ? 'Ada' : 'Tidak Ada' }}
-                                </small><br>
-                                <small class="text-{{ $tableStructure['has_keterangan'] ? 'success' : 'danger' }}">
-                                    <i class="bi bi-{{ $tableStructure['has_keterangan'] ? 'check' : 'x' }}-circle me-1"></i>
-                                    Keterangan: {{ $tableStructure['has_keterangan'] ? 'Ada' : 'Tidak Ada' }}
-                                </small><br>
-                                <small class="text-{{ $tableStructure['has_jenis'] ? 'success' : 'danger' }}">
-                                    <i class="bi bi-{{ $tableStructure['has_jenis'] ? 'check' : 'x' }}-circle me-1"></i>
-                                    Jenis: {{ $tableStructure['has_jenis'] ? 'Ada' : 'Tidak Ada' }}
-                                </small>
-                            </div>
-                            <div class="col-md-3">
-                                <strong>Data:</strong><br>
-                                <small>Total: {{ $tableStructure['total_capitals'] }} records</small><br>
-                            </div>
-                            <div class="col-md-6">
-                                <button class="btn btn-sm btn-outline-info" wire:click="refreshTableStructure()">
-                                    <i class="bi bi-arrow-clockwise me-1"></i>Refresh Struktur
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            @endif
 
             <div class="card shadow-lg border-0 overflow-hidden">
                 <div class="card-header bg-gradient-primary text-white border-0">

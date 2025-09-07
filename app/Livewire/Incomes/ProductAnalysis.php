@@ -34,53 +34,65 @@ class ProductAnalysis extends Component
             $this->filterYear = $filters['year'];
         }
 
-        $query = Income::where('user_id', Auth::id());
+        // Gunakan model dengan global scope - tidak perlu where('user_id', Auth::id())
+        $query = Income::query();
 
         if ($this->filterMonth && $this->filterYear) {
             $query->whereMonth('tanggal', $this->filterMonth)
                   ->whereYear('tanggal', $this->filterYear);
         }
 
-        // Top 5 Best-Selling Products
-        $topSelling = (clone $query)
-            ->select('produk', DB::raw('SUM(jumlah_terjual) as total_terjual'))
+        // Get all products with their totals
+        $allProducts = (clone $query)
+            ->select('produk', 
+                DB::raw('SUM(jumlah_terjual) as total_terjual'),
+                DB::raw('SUM(laba) as total_laba')
+            )
             ->groupBy('produk')
-            ->orderByDesc('total_terjual')
-            ->limit(5)
+            ->having('total_terjual', '>', 0)
+            ->having('total_laba', '>', 0)
             ->get();
 
-        // Top 5 Most Profitable Products
-        $topProfitable = (clone $query)
-            ->select('produk', DB::raw('SUM(laba) as total_laba'))
-            ->groupBy('produk')
-            ->orderByDesc('total_laba')
-            ->limit(5)
-            ->get();
-
-        $combined = [];
-
-        foreach ($topSelling as $product) {
-            $combined[$product->produk]['total_terjual'] = $product->total_terjual;
-            $combined[$product->produk]['categories'][] = 'terlaris';
+        if ($allProducts->isEmpty()) {
+            $this->analyzedProducts = [];
+            return;
         }
 
-        foreach ($topProfitable as $product) {
-            $combined[$product->produk]['total_laba'] = $product->total_laba;
-            $combined[$product->produk]['categories'][] = 'menguntungkan';
-        }
+        // Find the best-selling product (highest total_terjual)
+        $bestSelling = $allProducts->sortByDesc('total_terjual')->first();
         
-        // Fetch the missing metric for each product
-        foreach ($combined as $produk => $data) {
-            if (!isset($data['total_laba'])) {
-                $laba = (clone $query)->where('produk', $produk)->sum('laba');
-                $combined[$produk]['total_laba'] = $laba;
-            }
-            if (!isset($data['total_terjual'])) {
-                $terjual = (clone $query)->where('produk', $produk)->sum('jumlah_terjual');
-                $combined[$produk]['total_terjual'] = $terjual;
-            }
+        // Find the most profitable product (highest total_laba)
+        $mostProfitable = $allProducts->sortByDesc('total_laba')->first();
+
+        $analyzedProducts = [];
+
+        // Add best-selling product
+        if ($bestSelling) {
+            $analyzedProducts[] = [
+                'name' => $bestSelling->produk,
+                'total_terjual' => $bestSelling->total_terjual,
+                'total_laba' => $bestSelling->total_laba,
+                'categories' => ['terlaris'],
+                'rank' => 1
+            ];
         }
 
-        $this->analyzedProducts = $combined;
+        // Add most profitable product (if different from best-selling)
+        if ($mostProfitable && $mostProfitable->produk !== $bestSelling->produk) {
+            $analyzedProducts[] = [
+                'name' => $mostProfitable->produk,
+                'total_terjual' => $mostProfitable->total_terjual,
+                'total_laba' => $mostProfitable->total_laba,
+                'categories' => ['menguntungkan'],
+                'rank' => 2
+            ];
+        }
+
+        // If the same product is both best-selling and most profitable, update its categories
+        if ($bestSelling && $mostProfitable && $bestSelling->produk === $mostProfitable->produk) {
+            $analyzedProducts[0]['categories'] = ['terlaris', 'menguntungkan'];
+        }
+
+        $this->analyzedProducts = $analyzedProducts;
     }
 }

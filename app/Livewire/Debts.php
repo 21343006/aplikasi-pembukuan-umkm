@@ -37,15 +37,15 @@ class Debts extends Component
 
     public function render()
     {
-        $debts = Debt::where('user_id', auth()->id())
-            ->orderBy('due_date', 'asc')
+        $debts = Debt::
+            orderBy('due_date', 'asc')
             ->paginate(10);
 
-        $totalDebts = Debt::where('user_id', auth()->id())->sum('amount');
-        $totalPaid = Debt::where('user_id', auth()->id())->sum('paid_amount');
+        $totalDebts = Debt::sum('amount');
+        $totalPaid = Debt::where('paid_amount', '>', 0)->sum('paid_amount');
         $totalRemaining = $totalDebts - $totalPaid;
-        $overdueCount = Debt::where('user_id', auth()->id())
-            ->where('due_date', '<', now())
+        $overdueCount = Debt::
+            where('due_date', '<', now())
             ->where('status', '!=', 'paid')
             ->count();
 
@@ -61,14 +61,32 @@ class Debts extends Component
 
     public function edit($id)
     {
-        $debt = Debt::findOrFail($id);
-        $this->editingDebtId = $id;
-        $this->creditor_name = $debt->creditor_name;
-        $this->description = $debt->description;
-        $this->amount = $debt->amount;
-        $this->due_date = $debt->due_date->format('Y-m-d');
-        $this->notes = $debt->notes;
-        $this->showForm = true;
+        try {
+            // Pastikan user yang login
+            if (!auth()->check()) {
+                session()->flash('error', 'Anda harus login terlebih dahulu.');
+                return;
+            }
+
+            // Gunakan global scope untuk memastikan hanya data user yang sedang login
+            $debt = Debt::findOrFail($id);
+            
+            // Double check: pastikan debt milik user yang sedang login
+            if ($debt->user_id !== auth()->id()) {
+                session()->flash('error', 'Anda tidak memiliki akses ke data ini.');
+                return;
+            }
+
+            $this->editingDebtId = $id;
+            $this->creditor_name = $debt->creditor_name;
+            $this->description = $debt->description;
+            $this->amount = $debt->amount;
+            $this->due_date = $debt->due_date->format('Y-m-d');
+            $this->notes = $debt->notes;
+            $this->showForm = true;
+        } catch (\Exception $e) {
+            session()->flash('error', 'Data tidak ditemukan atau Anda tidak memiliki akses.');
+        }
     }
 
     public function save()
@@ -98,17 +116,53 @@ class Debts extends Component
 
     public function delete($id)
     {
-        $debt = Debt::findOrFail($id);
-        $debt->delete();
-        session()->flash('message', 'Utang berhasil dihapus!');
+        try {
+            // Pastikan user yang login
+            if (!auth()->check()) {
+                session()->flash('error', 'Anda harus login terlebih dahulu.');
+                return;
+            }
+
+            // Gunakan global scope untuk memastikan hanya data user yang sedang login
+            $debt = Debt::findOrFail($id);
+            
+            // Double check: pastikan debt milik user yang sedang login
+            if ($debt->user_id !== auth()->id()) {
+                session()->flash('error', 'Anda tidak memiliki akses ke data ini.');
+                return;
+            }
+
+            $debt->delete();
+            session()->flash('message', 'Utang berhasil dihapus!');
+        } catch (\Exception $e) {
+            session()->flash('error', 'Data tidak ditemukan atau Anda tidak memiliki akses.');
+        }
     }
 
     public function showPayment($id)
     {
-        $this->selectedDebt = Debt::findOrFail($id);
-        $this->payment_amount = '';
-        $this->payment_date = now()->format('Y-m-d');
-        $this->showPaymentForm = true;
+        try {
+            // Pastikan user yang login
+            if (!auth()->check()) {
+                session()->flash('error', 'Anda harus login terlebih dahulu.');
+                return;
+            }
+
+            // Gunakan global scope untuk memastikan hanya data user yang sedang login
+            $this->selectedDebt = Debt::findOrFail($id);
+            
+            // Double check: pastikan debt milik user yang sedang login
+            if ($this->selectedDebt->user_id !== auth()->id()) {
+                session()->flash('error', 'Anda tidak memiliki akses ke data ini.');
+                return;
+            }
+
+            $this->payment_amount = '';
+            $this->payment_date = now()->format('Y-m-d');
+            $this->showPaymentForm = true;
+        } catch (\Exception $e) {
+            session()->flash('error', 'Data tidak ditemukan atau Anda tidak memiliki akses.');
+        }
     }
 
     public function recordPayment()
@@ -119,7 +173,8 @@ class Debts extends Component
         ]);
 
         $debt = $this->selectedDebt;
-        $newPaidAmount = $debt->paid_amount + $this->payment_amount;
+        $currentPaidAmount = $debt->paid_amount ?? 0;
+        $newPaidAmount = $currentPaidAmount + $this->payment_amount;
         
         // Update status berdasarkan jumlah pembayaran
         if ($newPaidAmount >= $debt->amount) {

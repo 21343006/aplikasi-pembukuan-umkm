@@ -16,8 +16,6 @@ class ExpenditurePage extends Component
     #[Title('Biaya Pengeluaran')]
     
     public $tanggal, $keterangan, $jumlah;
-    public array $expenditures = [];
-    public $total = 0;
     public $showModal = false;
     public $isEdit = false;
     public $expenditure_id;
@@ -25,6 +23,7 @@ class ExpenditurePage extends Component
     public $filterMonth = '';
     public $filterYear = '';
     public $perPage = 10;
+    public $totalExpenditure = 0; // Total pengeluaran untuk periode yang dipilih
     protected $paginationTheme = 'bootstrap';
 
     // Array nama bulan dalam bahasa Indonesia
@@ -40,9 +39,29 @@ class ExpenditurePage extends Component
         'jumlah' => 'required|numeric|min:0',
     ];
 
+    protected function rules()
+    {
+        $rules = [
+            'tanggal' => 'required|date',
+            'keterangan' => 'required|string|max:255',
+            'jumlah' => 'required|numeric|min:0',
+        ];
+
+        // Tambahkan validasi tanggal yang lebih ketat jika filter sudah dipilih
+        if ($this->filterMonth && $this->filterYear) {
+            $minDate = sprintf('%04d-%02d-01', (int)$this->filterYear, (int)$this->filterMonth);
+            $maxDate = Carbon::create((int)$this->filterYear, (int)$this->filterMonth, 1)->endOfMonth()->format('Y-m-d');
+            $rules['tanggal'] .= "|after_or_equal:{$minDate}|before_or_equal:{$maxDate}";
+        }
+
+        return $rules;
+    }
+
     protected $messages = [
         'tanggal.required' => 'Tanggal wajib diisi.',
         'tanggal.date' => 'Format tanggal tidak valid.',
+        'tanggal.after_or_equal' => 'Tanggal harus berada dalam bulan dan tahun yang dipilih.',
+        'tanggal.before_or_equal' => 'Tanggal harus berada dalam bulan dan tahun yang dipilih.',
         'keterangan.required' => 'Keterangan wajib diisi.',
         'keterangan.max' => 'Keterangan maksimal 255 karakter.',
         'jumlah.required' => 'Jumlah wajib diisi.',
@@ -83,80 +102,61 @@ class ExpenditurePage extends Component
 
     public function mount()
     {
-        $this->expenditures = [];
-        $this->total = 0;
+        try {
+            $this->resetFormData();
+            $this->loadMonthlyTotals();
+        } catch (\Exception $e) {
+            Log::error('Error in mount: ' . $e->getMessage());
+            $this->resetFormData();
+        }
+    }
+
+    private function resetFormData()
+    {
         $this->monthlyTotals = [];
         $this->filterMonth = '';
         $this->filterYear = '';
-        $this->loadMonthlyTotals();
+        $this->totalExpenditure = 0;
+        $this->resetInput();
     }
 
-    // Modifikasi method loadExpenditures untuk menghitung total dari semua data (bukan hanya yang dipaginate)
-    public function loadExpenditures()
+    // Method yang dipanggil saat komponen di-boot
+    public function boot()
     {
-        try {
-            if (!Auth::check()) {
-                $this->expenditures = [];
-                $this->total = 0;
-                return;
-            }
-
-            if (!$this->filterMonth || !$this->filterYear) {
-                $this->expenditures = [];
-                $this->total = 0;
-                return;
-            }
-
-            if (!is_numeric($this->filterMonth) || !is_numeric($this->filterYear)) {
-                $this->expenditures = [];
-                $this->total = 0;
-                return;
-            }
-
-            // Hitung total dari semua data (untuk summary)
-            $totalQuery = Expenditure::where('user_id', Auth::id())
-                ->whereMonth('tanggal', (int)$this->filterMonth)
-                ->whereYear('tanggal', (int)$this->filterYear);
-
-            $this->total = $totalQuery->sum('jumlah') ?? 0;
-            
-        } catch (\Exception $e) {
-            $this->expenditures = [];
-            $this->total = 0;
-
-            Log::error('Error in loadExpenditures: ' . $e->getMessage(), [
-                'filterMonth' => $this->filterMonth,
-                'filterYear' => $this->filterYear,
-                'user_id' => Auth::id(),
-                'trace' => $e->getTraceAsString()
-            ]);
-
-            session()->flash('error', 'Terjadi kesalahan saat memuat data. Silakan coba lagi.');
+        // Pastikan filter tersimpan di session saat komponen di-boot
+        if ($this->filterMonth && $this->filterYear) {
+            session(['expenditure_filter_month' => $this->filterMonth]);
+            session(['expenditure_filter_year' => $this->filterYear]);
         }
     }
 
-    // Tambahkan method baru untuk mendapatkan data yang dipaginate
-    public function getPaginatedExpenditures()
+    // Method yang dipanggil saat komponen di-boot
+    public function booted()
     {
-        if (!Auth::check() || !$this->filterMonth || !$this->filterYear) {
-            // Return query builder dengan where yang tidak akan pernah match
-            return Expenditure::where('id', 0)->paginate($this->perPage);
+        // Pastikan filter tersimpan di session saat komponen di-boot
+        if ($this->filterMonth && $this->filterYear) {
+            session(['expenditure_filter_month' => $this->filterMonth]);
+            session(['expenditure_filter_year' => $this->filterYear]);
         }
+    }
 
-        if (!is_numeric($this->filterMonth) || !is_numeric($this->filterYear)) {
-            return Expenditure::where('id', 0)->paginate($this->perPage);
+    // Method yang dipanggil setelah komponen di-hydrate (setelah navigasi)
+    public function hydrate()
+    {
+        // Pastikan filter tersimpan di session
+        if ($this->filterMonth && $this->filterYear) {
+            session(['expenditure_filter_month' => $this->filterMonth]);
+            session(['expenditure_filter_year' => $this->filterYear]);
         }
+    }
 
-        try {
-            return Expenditure::where('user_id', Auth::id())
-                ->whereMonth('tanggal', (int)$this->filterMonth)
-                ->whereYear('tanggal', (int)$this->filterYear)
-                ->orderBy('tanggal', 'desc')
-                ->orderBy('created_at', 'desc')
-                ->paginate($this->perPage);
-        } catch (\Exception $e) {
-            Log::error('Error in getPaginatedExpenditures: ' . $e->getMessage());
-            return Expenditure::where('id', 0)->paginate($this->perPage);
+    // Method yang dipanggil sebelum komponen di-dehydrate (sebelum navigasi)
+    public function dehydrate()
+    {
+        // Pastikan filter tersimpan di session sebelum navigasi
+        if ($this->filterMonth && $this->filterYear) {
+            session(['expenditure_filter_month' => $this->filterMonth]);
+            session(['expenditure_filter_year' => $this->filterYear]);
         }
     }
 
@@ -168,67 +168,120 @@ class ExpenditurePage extends Component
                 return;
             }
 
-            // Buat query dasar untuk user yang sedang login
-            $query = Expenditure::where('user_id', Auth::id())
+            // Jika filter kosong, tetap muat data untuk ringkasan 6 bulan terakhir
+            // tapi jangan update total pengeluaran
+
+            // Gunakan model dengan global scope - tidak perlu where('user_id', Auth::id())
+            $query = Expenditure::query()
                 ->whereNotNull('tanggal');
 
-            // Jika tahun dipilih, filter berdasarkan tahun
+            // Filter berdasarkan tahun jika sudah dipilih
             if (!empty($this->filterYear) && is_numeric($this->filterYear)) {
                 $query->whereYear('tanggal', (int)$this->filterYear);
+                
+                // Jangan filter berdasarkan bulan di sini agar tetap menampilkan semua bulan dalam tahun
+                // Total untuk bulan tertentu akan dihitung di updateTotalExpenditure()
             }
 
-            try {
-                // Coba gunakan selectRaw untuk performa yang lebih baik
-                $monthlyData = $query->selectRaw('
-                    YEAR(tanggal) as year, 
-                    MONTH(tanggal) as month, 
-                    SUM(jumlah) as total
-                ')
-                    ->groupByRaw('YEAR(tanggal), MONTH(tanggal)')
-                    ->orderByRaw('YEAR(tanggal) DESC, MONTH(tanggal) DESC')
-                    ->get();
+            $monthlyData = $query->selectRaw('
+                YEAR(tanggal) as year, 
+                MONTH(tanggal) as month, 
+                SUM(jumlah) as total
+            ')
+                ->groupByRaw('YEAR(tanggal), MONTH(tanggal)')
+                ->orderByRaw('YEAR(tanggal) DESC, MONTH(tanggal) DESC')
+                ->get();
 
-                $this->monthlyTotals = $monthlyData->mapWithKeys(function ($item) {
-                    $key = sprintf('%04d-%02d', $item->year, $item->month);
-                    return [$key => $item->total];
-                })->toArray();
+            $this->monthlyTotals = $monthlyData->mapWithKeys(function ($item) {
+                $key = sprintf('%04d-%02d', $item->year, $item->month);
+                return [$key => $item->total];
+            })->toArray();
 
-            } catch (\Exception $rawQueryException) {
-                // Fallback ke method manual jika selectRaw gagal
-                Log::warning('selectRaw failed, using fallback method: ' . $rawQueryException->getMessage());
-                
-                $expenditures = $query->get();
-
-                if ($expenditures->isEmpty()) {
-                    $this->monthlyTotals = [];
-                    return;
-                }
-
-                $grouped = $expenditures->groupBy(function ($expenditure) {
-                    try {
-                        $date = $expenditure->tanggal instanceof \Carbon\Carbon
-                            ? $expenditure->tanggal
-                            : Carbon::parse($expenditure->tanggal);
-
-                        return $date->format('Y-m');
-                    } catch (\Exception $dateException) {
-                        Log::error('Error parsing date in groupBy: ' . $dateException->getMessage());
-                        return null;
-                    }
-                });
-
-                $this->monthlyTotals = $grouped->filter()
-                    ->map(function ($monthlyExpenditures) {
-                        return $monthlyExpenditures->sum('jumlah');
-                    })
-                    ->sortKeysDesc()
-                    ->toArray();
+            // Update total pengeluaran jika bulan dan tahun sudah dipilih
+            if (!empty($this->filterMonth) && !empty($this->filterYear)) {
+                $this->updateTotalExpenditure();
             }
 
         } catch (\Exception $e) {
             $this->monthlyTotals = [];
             Log::error('Error loading monthly totals: ' . $e->getMessage(), [
-                'user_id' => Auth::id(),
+                'filterYear' => $this->filterYear,
+                'filterMonth' => $this->filterMonth,
+                'trace' => $e->getTraceAsString()
+            ]);
+        }
+    }
+
+    // Method untuk memuat data pengeluaran sesuai periode yang dipilih
+    public function loadExpenditures()
+    {
+        try {
+            if (!Auth::check()) {
+                $this->totalExpenditure = 0;
+                return;
+            }
+
+            if (!$this->filterMonth || !$this->filterYear) {
+                $this->totalExpenditure = 0;
+                return;
+            }
+
+            if (!is_numeric($this->filterMonth) || !is_numeric($this->filterYear)) {
+                $this->totalExpenditure = 0;
+                return;
+            }
+
+            $this->updateTotalExpenditure();
+
+        } catch (\Exception $e) {
+            $this->totalExpenditure = 0;
+
+            Log::error('Error in loadExpenditures: ' . $e->getMessage(), [
+                'filterMonth' => $this->filterMonth,
+                'filterYear' => $this->filterYear,
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            session()->flash('error', 'Terjadi kesalahan saat memuat data. Silakan coba lagi.');
+        }
+    }
+
+    // Method untuk refresh data setelah operasi CRUD
+    public function refreshData()
+    {
+        
+        // Pastikan filter tersimpan di session sebelum refresh
+        if ($this->filterMonth && $this->filterYear) {
+            session(['expenditure_filter_month' => $this->filterMonth]);
+            session(['expenditure_filter_year' => $this->filterYear]);
+        }
+        
+        $this->loadMonthlyTotals();
+        $this->loadExpenditures();
+    }
+
+    // Method baru untuk menghitung total pengeluaran yang konsisten
+    private function updateTotalExpenditure()
+    {
+        try {
+            $month = (int) $this->filterMonth;
+            $year = (int) $this->filterYear;
+
+            // Hitung total pengeluaran untuk periode yang dipilih
+            // Gunakan query builder dengan global scope
+            $query = Expenditure::query()
+                ->whereMonth('tanggal', $month)
+                ->whereYear('tanggal', $year);
+
+            $totalExpenditure = $query->sum('jumlah');
+
+            $this->totalExpenditure = (float) $totalExpenditure;
+
+
+        } catch (\Exception $e) {
+            $this->totalExpenditure = 0;
+            Log::error('Error in updateTotalExpenditure: ' . $e->getMessage(), [
+                'filterMonth' => $this->filterMonth,
                 'filterYear' => $this->filterYear,
                 'trace' => $e->getTraceAsString()
             ]);
@@ -250,14 +303,20 @@ class ExpenditurePage extends Component
         $this->resetInput();
 
         try {
+            // Pastikan tanggal default selalu sesuai dengan periode yang dipilih
             $today = now();
-            if ($today->month == $this->filterMonth && $today->year == $this->filterYear) {
+            $selectedMonth = (int) $this->filterMonth;
+            $selectedYear = (int) $this->filterYear;
+            
+            // Jika periode yang dipilih adalah bulan dan tahun saat ini, gunakan tanggal hari ini
+            if ($today->month == $selectedMonth && $today->year == $selectedYear) {
                 $this->tanggal = $today->format('Y-m-d');
             } else {
-                $this->tanggal = sprintf('%04d-%02d-01', $this->filterYear, $this->filterMonth);
+                // Jika bukan bulan/tahun saat ini, gunakan tanggal 1 dari bulan yang dipilih
+                $this->tanggal = sprintf('%04d-%02d-01', $selectedYear, $selectedMonth);
             }
         } catch (\Exception $e) {
-            $this->tanggal = now()->format('Y-m-d');
+            $this->tanggal = sprintf('%04d-%02d-01', (int)$this->filterYear, (int)$this->filterMonth);
             Log::error('Error setting default date: ' . $e->getMessage());
         }
 
@@ -280,21 +339,30 @@ class ExpenditurePage extends Component
 
             $this->validate();
 
-            $selectedDate = Carbon::parse($this->tanggal);
-            if ($selectedDate->month != $this->filterMonth || $selectedDate->year != $this->filterYear) {
+            // Validasi tanggal harus sesuai dengan periode yang dipilih
+            $selectedDate = Carbon::parse($this->tanggal, config('app.timezone'));
+            if ($selectedDate->month != (int)$this->filterMonth || $selectedDate->year != (int)$this->filterYear) {
                 $this->addError('tanggal', 'Tanggal harus sesuai dengan bulan dan tahun yang dipilih.');
                 return;
             }
 
             $data = [
-                'user_id' => Auth::id(),
+                'user_id' => Auth::id(), // Tambahkan user_id dari user yang sedang login
                 'tanggal' => $this->tanggal,
                 'keterangan' => trim($this->keterangan),
                 'jumlah' => (float) $this->jumlah,
             ];
 
             if ($this->isEdit && $this->expenditure_id) {
-                $expenditure = Expenditure::where('user_id', Auth::id())->findOrFail($this->expenditure_id);
+                $expenditure = Expenditure::findOrFail($this->expenditure_id);
+                
+                // Validasi tanggal saat edit juga
+                $oldDate = Carbon::parse($expenditure->tanggal);
+                if ($oldDate->month != (int)$this->filterMonth || $oldDate->year != (int)$this->filterYear) {
+                    $this->addError('tanggal', 'Data yang diedit harus berada dalam periode yang dipilih.');
+                    return;
+                }
+                
                 $expenditure->update($data);
                 session()->flash('message', 'Data berhasil diperbarui!');
             } else {
@@ -303,19 +371,16 @@ class ExpenditurePage extends Component
             }
 
             $this->closeModal();
-            $this->loadExpenditures();
-            $this->loadMonthlyTotals();
+            $this->refreshData();
             
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             Log::error('Expenditure not found: ' . $e->getMessage(), [
-                'expenditure_id' => $this->expenditure_id,
-                'user_id' => Auth::id()
+                'expenditure_id' => $this->expenditure_id
             ]);
             session()->flash('error', 'Data tidak ditemukan atau Anda tidak memiliki akses.');
         } catch (\Exception $e) {
             Log::error('Error in save method: ' . $e->getMessage(), [
                 'data' => $data ?? null,
-                'user_id' => Auth::id(),
                 'trace' => $e->getTraceAsString()
             ]);
             session()->flash('error', 'Terjadi kesalahan saat menyimpan data. Silakan coba lagi.');
@@ -335,7 +400,20 @@ class ExpenditurePage extends Component
                 return;
             }
 
-            $expenditure = Expenditure::where('user_id', Auth::id())->findOrFail($id);
+            $expenditure = Expenditure::findOrFail($id);
+            
+            // Double check: pastikan expenditure milik user yang sedang login
+            if ($expenditure->user_id !== Auth::id()) {
+                session()->flash('error', 'Anda tidak memiliki akses ke data ini.');
+                return;
+            }
+
+            // Validasi bahwa data yang diedit berada dalam periode yang dipilih
+            $expenditureDate = Carbon::parse($expenditure->tanggal);
+            if ($expenditureDate->month != (int)$this->filterMonth || $expenditureDate->year != (int)$this->filterYear) {
+                session()->flash('error', 'Data yang diedit tidak berada dalam periode yang dipilih. Silakan pilih periode yang sesuai terlebih dahulu.');
+                return;
+            }
 
             $this->expenditure_id = $expenditure->id;
 
@@ -352,14 +430,12 @@ class ExpenditurePage extends Component
             
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             Log::error('Expenditure not found for edit: ' . $e->getMessage(), [
-                'id' => $id,
-                'user_id' => Auth::id()
+                'id' => $id
             ]);
             session()->flash('error', 'Data tidak ditemukan atau Anda tidak memiliki akses.');
         } catch (\Exception $e) {
             Log::error('Error in edit method: ' . $e->getMessage(), [
                 'id' => $id,
-                'user_id' => Auth::id(),
                 'trace' => $e->getTraceAsString()
             ]);
             session()->flash('error', 'Terjadi kesalahan saat memuat data untuk diedit.');
@@ -384,23 +460,27 @@ class ExpenditurePage extends Component
                 return;
             }
 
-            $expenditure = Expenditure::where('user_id', Auth::id())->findOrFail($id);
+            $expenditure = Expenditure::findOrFail($id);
+            
+            // Double check: pastikan expenditure milik user yang sedang login
+            if ($expenditure->user_id !== Auth::id()) {
+                session()->flash('error', 'Anda tidak memiliki akses ke data ini.');
+                return;
+            }
+            
             $expenditure->delete();
             
-            $this->loadExpenditures();
-            $this->loadMonthlyTotals();
+            $this->refreshData();
             session()->flash('message', 'Data berhasil dihapus!');
             
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             Log::error('Expenditure not found for delete: ' . $e->getMessage(), [
-                'id' => $id,
-                'user_id' => Auth::id()
+                'id' => $id
             ]);
             session()->flash('error', 'Data tidak ditemukan atau Anda tidak memiliki akses.');
         } catch (\Exception $e) {
             Log::error('Error in delete method: ' . $e->getMessage(), [
                 'id' => $id,
-                'user_id' => Auth::id(),
                 'trace' => $e->getTraceAsString()
             ]);
             session()->flash('error', 'Gagal menghapus data. Silakan coba lagi.');
@@ -420,8 +500,7 @@ class ExpenditurePage extends Component
                 return;
             }
 
-            $expenditures = Expenditure::where('user_id', Auth::id())
-                ->whereMonth('tanggal', (int)$this->filterMonth)
+            $expenditures = Expenditure::whereMonth('tanggal', (int)$this->filterMonth)
                 ->whereYear('tanggal', (int)$this->filterYear)
                 ->orderBy('tanggal', 'desc')
                 ->get();
@@ -432,45 +511,82 @@ class ExpenditurePage extends Component
             }
 
             $monthName = $this->monthNames[(int)$this->filterMonth];
-            $fileName = sprintf('pengeluaran_%s_%s.csv', $monthName, $this->filterYear);
+            $fileName = sprintf('Laporan_Pengeluaran_%s_%s.csv', $monthName, $this->filterYear);
 
             $headers = [
                 'Content-Type' => 'text/csv; charset=UTF-8',
                 'Content-Disposition' => 'attachment; filename="' . $fileName . '"',
             ];
 
-            $callback = function() use ($expenditures) {
+            $callback = function() use ($expenditures, $monthName) {
                 $file = fopen('php://output', 'w');
                 
+                // Add BOM to support Unicode in Excel
                 fprintf($file, chr(0xEF).chr(0xBB).chr(0xBF));
 
+                // Header informasi laporan
+                fputcsv($file, ['LAPORAN PENGELUARAN']);
+                fputcsv($file, ['Periode: ' . $monthName . ' ' . $this->filterYear]);
+                fputcsv($file, ['Tanggal Export: ' . now()->format('d F Y H:i:s')]);
+                fputcsv($file, []); // Empty row
+
+                // Column headers dengan format yang lebih rapi
                 fputcsv($file, [
                     'No',
                     'Tanggal',
                     'Keterangan',
-                    'Jumlah',
-                    'Tanggal Dibuat',
-                    'Tanggal Diupdate'
+                    'Jumlah Pengeluaran (Rp)',
+                    'Kategori'
                 ]);
 
                 $no = 1;
+                $grandTotal = 0;
+                $kategorisasi = [];
+                
                 foreach ($expenditures as $expenditure) {
+                    $jumlah = (float) $expenditure->jumlah;
+                    $grandTotal += $jumlah;
+                    
+                    // Kategorisasi sederhana berdasarkan keterangan
+                    $kategori = $this->kategorisasiPengeluaran($expenditure->keterangan);
+                    if (isset($kategorisasi[$kategori])) {
+                        $kategorisasi[$kategori] += $jumlah;
+                    } else {
+                        $kategorisasi[$kategori] = $jumlah;
+                    }
+
                     fputcsv($file, [
                         $no++,
-                        Carbon::parse($expenditure->tanggal)->format('Y-m-d'),
-                        $expenditure->keterangan,
-                        $expenditure->jumlah,
-                        Carbon::parse($expenditure->created_at)->format('Y-m-d H:i:s'),
-                        Carbon::parse($expenditure->updated_at)->format('Y-m-d H:i:s')
+                        Carbon::parse($expenditure->tanggal)->format('d/m/Y'),
+                        (string) $expenditure->keterangan,
+                        number_format($jumlah, 0, ',', '.'),
+                        $kategori
                     ]);
                 }
 
+                // Summary section
                 fputcsv($file, []); // Empty row
-                fputcsv($file, [
-                    '', '', 'TOTAL:',
-                    $this->total,
-                    '', ''
-                ]);
+                fputcsv($file, ['RINGKASAN LAPORAN']);
+                fputcsv($file, []); // Empty row
+                
+                fputcsv($file, ['Total Pengeluaran:', number_format($grandTotal, 0, ',', '.')]);
+                fputcsv($file, ['Jumlah Transaksi:', $expenditures->count()]);
+                fputcsv($file, ['Rata-rata per Transaksi:', number_format($grandTotal / $expenditures->count(), 0, ',', '.')]);
+                
+                // Breakdown by category
+                if (!empty($kategorisasi)) {
+                    fputcsv($file, []); // Empty row
+                    fputcsv($file, ['BREAKDOWN PER KATEGORI']);
+                    fputcsv($file, []); // Empty row
+                    
+                    foreach ($kategorisasi as $kategori => $total) {
+                        $persentase = ($total / $grandTotal) * 100;
+                        fputcsv($file, [
+                            $kategori . ':', 
+                            number_format($total, 0, ',', '.') . ' (' . number_format($persentase, 1, ',', '.') . '%)'
+                        ]);
+                    }
+                }
 
                 fclose($file);
             };
@@ -481,7 +597,6 @@ class ExpenditurePage extends Component
             Log::error('Error in exportCSV method: ' . $e->getMessage(), [
                 'filterMonth' => $this->filterMonth,
                 'filterYear' => $this->filterYear,
-                'user_id' => Auth::id(),
                 'trace' => $e->getTraceAsString()
             ]);
             
@@ -489,15 +604,59 @@ class ExpenditurePage extends Component
         }
     }
 
+    /**
+     * Kategorisasi pengeluaran berdasarkan keterangan
+     */
+    private function kategorisasiPengeluaran($keterangan)
+    {
+        $keterangan = strtolower($keterangan);
+        
+        // Bahan baku dan inventori
+        if (preg_match('/\b(beli|bahan|stock|stok|inventory|inventori|baku|material)\b/', $keterangan)) {
+            return 'Bahan Baku & Inventori';
+        }
+        
+        // Operasional
+        if (preg_match('/\b(listrik|air|gas|internet|telepon|sewa|rent|operasional|maintenance|perawatan)\b/', $keterangan)) {
+            return 'Operasional';
+        }
+        
+        // Transport dan logistik
+        if (preg_match('/\b(transport|ongkir|kirim|bensin|solar|ojek|grab|gojek|ekspedisi|logistik)\b/', $keterangan)) {
+            return 'Transport & Logistik';
+        }
+        
+        // Marketing dan promosi
+        if (preg_match('/\b(iklan|promosi|marketing|sosmed|facebook|instagram|google|ads|banner)\b/', $keterangan)) {
+            return 'Marketing & Promosi';
+        }
+        
+        // Peralatan dan perlengkapan
+        if (preg_match('/\b(alat|peralatan|perlengkapan|equipment|mesin|komputer|printer)\b/', $keterangan)) {
+            return 'Peralatan & Perlengkapan';
+        }
+        
+        // Administrasi
+        if (preg_match('/\b(admin|administrasi|pajak|retribusi|perizinan|notaris|legal|bank|transfer)\b/', $keterangan)) {
+            return 'Administrasi & Pajak';
+        }
+        
+        return 'Lainnya';
+    }
+
     public function clearFilters()
     {
+        
         $this->filterMonth = '';
         $this->filterYear = '';
-        $this->expenditures = [];
-        $this->total = 0;
+        
+        // Hapus filter dari session
+        session()->forget(['expenditure_filter_month', 'expenditure_filter_year']);
+        
         $this->resetInput();
-        $this->resetPage(); // Reset pagination saat clear filter
-        $this->loadMonthlyTotals(); // Reload monthly totals after clearing filters
+        $this->resetPage();
+        $this->totalExpenditure = 0;
+        $this->loadMonthlyTotals();
     }
 
     public function resetInput()
@@ -515,23 +674,41 @@ class ExpenditurePage extends Component
 
     public function updatedFilterMonth()
     {
-        $this->resetInput();
-        $this->resetPage(); // Reset pagination saat ganti filter
+        
+        // Simpan filter ke session
+        session(['expenditure_filter_month' => $this->filterMonth]);
+        
+        $this->resetPage();
+        $this->loadMonthlyTotals();
         $this->loadExpenditures();
     }
 
     public function updatedFilterYear()
     {
-        $this->resetInput();
-        $this->resetPage(); // Reset pagination saat ganti filter
+        
+        // Simpan filter ke session
+        session(['expenditure_filter_year' => $this->filterYear]);
+        
+        $this->resetPage();
+        $this->loadMonthlyTotals();
         $this->loadExpenditures();
-        $this->loadMonthlyTotals(); // Reload monthly totals when year filter changes
     }
 
-    // Tambahkan method untuk mengubah jumlah data per halaman
     public function updatedPerPage()
     {
         $this->resetPage();
+    }
+
+    // Method yang dipanggil setiap kali property berubah
+    public function updated($property)
+    {
+        // Jika filter berubah, simpan ke session
+        if (in_array($property, ['filterMonth', 'filterYear'])) {
+            if ($this->filterMonth && $this->filterYear) {
+                session(['expenditure_filter_month' => $this->filterMonth]);
+                session(['expenditure_filter_year' => $this->filterYear]);
+            }
+        }
     }
 
     public function updatedJumlah()
@@ -549,26 +726,74 @@ class ExpenditurePage extends Component
         $this->validateOnly('tanggal');
     }
 
-    public function getExpendituresCollection()
-    {
-        return collect($this->expenditures);
-    }
-
     public function getAvailableYears()
     {
         $currentYear = now()->year;
         $startYear = 2020;
         
-        return range($currentYear, $startYear);
+        return range($currentYear + 1, $startYear);
+    }
+
+    // Method untuk memuat filter dari session
+    public function loadFiltersFromSession()
+    {
+        $this->filterMonth = session('expenditure_filter_month', '');
+        $this->filterYear = session('expenditure_filter_year', '');
+        
+        if ($this->filterMonth && $this->filterYear) {
+            $this->refreshData();
+        }
+    }
+
+    // Method untuk mengatur filter default dan menyimpannya ke session
+    public function setDefaultFilters()
+    {
+        $this->filterMonth = now()->month;
+        $this->filterYear = now()->year;
+        
+        // Simpan ke session
+        session(['expenditure_filter_month' => $this->filterMonth]);
+        session(['expenditure_filter_year' => $this->filterYear]);
+        
+        $this->refreshData();
     }
 
     public function render()
     {
-        // Dapatkan data yang dipaginate untuk ditampilkan
-        $paginatedExpenditures = $this->getPaginatedExpenditures();
+        // Pastikan filter tersimpan di session sebelum render
+        if ($this->filterMonth && $this->filterYear) {
+            session(['expenditure_filter_month' => $this->filterMonth]);
+            session(['expenditure_filter_year' => $this->filterYear]);
+        }
+
+        $paginatedExpenditures = collect([]);
+
+        if (Auth::check() && $this->filterMonth && $this->filterYear) {
+            try {
+                $month = (int) $this->filterMonth;
+                $year = (int) $this->filterYear;
+
+                // Query untuk data yang sesuai periode
+                // Gunakan query builder dengan global scope
+                $query = Expenditure::query()
+                    ->whereMonth('tanggal', $month)
+                    ->whereYear('tanggal', $year);
+
+                $paginatedExpenditures = $query->orderBy('tanggal', 'desc')
+                    ->orderBy('created_at', 'desc')
+                    ->paginate($this->perPage);
+
+            } catch (\Exception $e) {
+                session()->flash('error', 'Terjadi kesalahan saat memuat data.');
+                $paginatedExpenditures = new \Illuminate\Pagination\LengthAwarePaginator([], 0, $this->perPage);
+            }
+        } else {
+            $paginatedExpenditures = new \Illuminate\Pagination\LengthAwarePaginator([], 0, $this->perPage);
+    }
         
         return view('livewire.expenditures.expenditure-page', [
-            'paginatedExpenditures' => $paginatedExpenditures
+            'paginatedExpenditures' => $paginatedExpenditures,
+            'total' => $this->totalExpenditure
         ]);
     }
 }

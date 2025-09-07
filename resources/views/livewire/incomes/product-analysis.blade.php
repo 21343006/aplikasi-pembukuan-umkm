@@ -4,10 +4,10 @@
 
         @if (!empty($analyzedProducts))
             <ul class="list-group list-group-flush">
-                @foreach ($analyzedProducts as $produk => $data)
+                @foreach ($analyzedProducts as $data)
                     <li class="list-group-item d-sm-flex justify-content-sm-between align-items-sm-center">
                         <div class="mb-2 mb-sm-0">
-                            <strong>{{ $produk }}</strong><br>
+                            <strong>{{ $data['name'] }}</strong><br>
                             <small class="text-muted">
                                 Terjual: {{ number_format($data['total_terjual'], 0, ',', '.') }} unit | Laba: Rp {{ number_format($data['total_laba'], 0, ',', '.') }}
                             </small>

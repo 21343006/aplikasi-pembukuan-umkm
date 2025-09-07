@@ -36,7 +36,7 @@ Aplikasi pembukuan sederhana untuk Usaha Mikro, Kecil, dan Menengah (UMKM) yang 
   - Statistik pembayaran
 
 ### 3. Analisis Keuangan
-- **Break Even Point (BEP)**: Analisis titik impas
+- **BEP Calculator**: Kalkulator Break Even Point real-time dari data aktual
 - **IRR Analysis**: Analisis tingkat pengembalian internal
 - **What-If Analysis**: Analisis skenario bisnis
 

@@ -63,12 +63,19 @@
                             <div class="card-body">
                                 <h5 class="card-title">Perbandingan Total Pendapatan dan Pengeluaran</h5>
                                 <!-- Pie Chart -->
-                                <div id="pieChart"></div>
+                                <div id="pieChart" 
+                                     data-daily-income="{{ $totalDailyIncome }}" 
+                                     data-daily-expenditure="{{ $totalDailyExpenditure }}">
+                                </div>
 
                                 <script>
                                     document.addEventListener('livewire:init', function() {
-                                        new ApexCharts(document.querySelector("#pieChart"), {
-                                            series: [{{ $totalDailyIncome }}, {{ $totalDailyExpenditure }}],
+                                        const pieChartElement = document.querySelector("#pieChart");
+                                        const dailyIncome = parseFloat(pieChartElement.dataset.dailyIncome) || 0;
+                                        const dailyExpenditure = parseFloat(pieChartElement.dataset.dailyExpenditure) || 0;
+                                        
+                                        new ApexCharts(pieChartElement, {
+                                            series: [dailyIncome, dailyExpenditure],
                                             chart: {
                                                 height: 350,
                                                 type: 'pie',
@@ -103,6 +110,7 @@
                                     <div class="ps-3">
                                         <h6>Rp {{ number_format($totalDebts, 0, ',', '.') }}</h6>
                                         <span class="text-danger small">Sisa: Rp {{ number_format($totalDebtsRemaining, 0, ',', '.') }}</span>
+                                        <br><span class="text-success small">Sudah dibayar: Rp {{ number_format($totalDebtsPaid, 0, ',', '.') }}</span>
                                         @if($overdueDebts > 0)
                                             <br><span class="text-danger small">Jatuh tempo: {{ $overdueDebts }}</span>
                                         @endif
@@ -124,6 +132,7 @@
                                     <div class="ps-3">
                                         <h6>Rp {{ number_format($totalReceivables, 0, ',', '.') }}</h6>
                                         <span class="text-success small">Sisa: Rp {{ number_format($totalReceivablesRemaining, 0, ',', '.') }}</span>
+                                        <br><span class="text-success small">Sudah diterima: Rp {{ number_format($totalReceivablesPaid, 0, ',', '.') }}</span>
                                         @if($overdueReceivables > 0)
                                             <br><span class="text-warning small">Jatuh tempo: {{ $overdueReceivables }}</span>
                                         @endif
@@ -160,6 +169,126 @@
                 </div>
             </div><!-- End Right side columns -->
 
+        </div>
+    </section>
+
+    {{-- Penjelasan untuk Pelaku UMKM Awam --}}
+    <section class="bg-light py-5 mt-5">
+        <div class="container">
+            <div class="row justify-content-center">
+                <div class="col-lg-10">
+                    <div class="card border-0 shadow-sm">
+                        <div class="card-body p-4">
+                            <div class="text-center mb-4">
+                                <i class="bi bi-lightbulb text-primary display-4"></i>
+                                <h4 class="mt-3 text-primary fw-bold">Panduan Dashboard UMKM</h4>
+                                <p class="text-muted">Penjelasan sederhana untuk memahami informasi keuangan bisnis Anda</p>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6 mb-4">
+                                    <div class="h-100 p-3 border rounded bg-white">
+                                        <h6 class="fw-bold text-primary mb-3">
+                                            <i class="bi bi-pie-chart me-2"></i>
+                                            Grafik Pemasukan vs Pengeluaran
+                                        </h6>
+                                        <ul class="list-unstyled">
+                                            <li class="mb-2">
+                                                <strong class="text-success">Pemasukan (Hijau):</strong> Total uang yang masuk dari penjualan
+                                            </li>
+                                            <li class="mb-2">
+                                                <strong class="text-danger">Pengeluaran (Merah):</strong> Total biaya operasional bisnis
+                                            </li>
+                                            <li class="mb-2">
+                                                <strong>Saldo Keuangan:</strong> Sisa uang setelah pengeluaran (Pemasukan - Pengeluaran)
+                                            </li>
+                                            <li class="mb-2">
+                                                <strong>Tips:</strong> Pastikan pemasukan selalu lebih besar dari pengeluaran
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6 mb-4">
+                                    <div class="h-100 p-3 border rounded bg-white">
+                                        <h6 class="fw-bold text-primary mb-3">
+                                            <i class="bi bi-credit-card me-2"></i>
+                                            Status Utang & Piutang
+                                        </h6>
+                                        <ul class="list-unstyled">
+                                            <li class="mb-2">
+                                                <strong class="text-danger">Total Utang:</strong> Semua hutang yang belum dibayar
+                                            </li>
+                                            <li class="mb-2">
+                                                <strong class="text-success">Total Piutang:</strong> Semua piutang yang belum diterima
+                                            </li>
+                                            <li class="mb-2">
+                                                <strong>Posisi Net:</strong> Selisih piutang dan utang (Positif = untung, Negatif = rugi)
+                                            </li>
+                                            <li class="mb-2">
+                                                <strong>Jatuh Tempo:</strong> Utang/piutang yang sudah melewati batas waktu
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row mt-3">
+                                <div class="col-12">
+                                    <div class="p-3 border rounded bg-white">
+                                        <h6 class="fw-bold text-primary mb-3">
+                                            <i class="bi bi-shield-check me-2"></i>
+                                            Indikator Kesehatan Bisnis
+                                        </h6>
+                                        <div class="row">
+                                            <div class="col-md-4 mb-3">
+                                                <div class="text-center p-3 border rounded h-100">
+                                                    <i class="bi bi-check-circle text-success display-6"></i>
+                                                    <h6 class="mt-2 text-success">Sehat</h6>
+                                                    <small class="text-muted">Saldo positif, utang minimal, piutang lancar</small>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-4 mb-3">
+                                                <div class="text-center p-3 border rounded h-100">
+                                                    <i class="bi bi-exclamation-triangle text-warning display-6"></i>
+                                                    <h6 class="mt-2 text-warning">Waspada</h6>
+                                                    <small class="text-muted">Saldo menipis, ada utang jatuh tempo</small>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-4 mb-3">
+                                                <div class="text-center p-3 border rounded h-100">
+                                                    <i class="bi bi-x-circle text-danger display-6"></i>
+                                                    <h6 class="mt-2 text-danger">Kritis</h6>
+                                                    <small class="text-muted">Saldo negatif, banyak utang, piutang macet</small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row mt-4">
+                                <div class="col-12">
+                                    <div class="alert alert-warning border-0">
+                                        <div class="d-flex align-items-start">
+                                            <i class="bi bi-exclamation-triangle me-3 mt-1"></i>
+                                            <div>
+                                                <h6 class="alert-heading fw-bold">Tindakan yang Perlu Dilakukan!</h6>
+                                                <ul class="mb-0">
+                                                    <li><strong>Setiap Hari:</strong> Periksa saldo kas dan transaksi harian</li>
+                                                    <li><strong>Setiap Minggu:</strong> Review utang dan piutang yang jatuh tempo</li>
+                                                    <li><strong>Setiap Bulan:</strong> Analisis tren pemasukan dan pengeluaran</li>
+                                                    <li><strong>Setiap 3 Bulan:</strong> Evaluasi dan rencana pengembangan bisnis</li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </section>
 

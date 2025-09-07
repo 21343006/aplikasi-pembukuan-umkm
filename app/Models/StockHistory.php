@@ -4,6 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Auth;
 
 class StockHistory extends Model
 {
@@ -43,6 +45,28 @@ class StockHistory extends Model
     public function reference()
     {
         return $this->morphTo();
+    }
+
+    // Global scope untuk auto-filter berdasarkan user yang login
+    protected static function booted(): void
+    {
+        static::addGlobalScope('user', function (Builder $query) {
+            if (Auth::check()) {
+                $query->where('user_id', Auth::id());
+            }
+        });
+    }
+
+    // Auto set user_id saat creating
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::creating(function ($stockHistory) {
+            if (!$stockHistory->user_id && Auth::check()) {
+                $stockHistory->user_id = Auth::id();
+            }
+        });
     }
 
     // Scope untuk filter berdasarkan tipe

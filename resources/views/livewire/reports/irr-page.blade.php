@@ -601,4 +601,124 @@
             });
         }, 5000);
     </script>
+
+    {{-- Penjelasan untuk Pelaku UMKM Awam --}}
+    <section class="bg-light py-5 mt-5">
+        <div class="container">
+            <div class="row justify-content-center">
+                <div class="col-lg-10">
+                    <div class="card border-0 shadow-sm">
+                        <div class="card-body p-4">
+                            <div class="text-center mb-4">
+                                <i class="bi bi-percent text-primary display-4"></i>
+                                <h4 class="mt-3 text-primary fw-bold">Panduan Internal Rate of Return (IRR)</h4>
+                                <p class="text-muted">Penjelasan sederhana untuk memahami kelayakan investasi UMKM</p>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6 mb-4">
+                                    <div class="h-100 p-3 border rounded bg-white">
+                                        <h6 class="fw-bold text-primary mb-3">
+                                            <i class="bi bi-question-circle me-2"></i>
+                                            Apa itu IRR?
+                                        </h6>
+                                        <ul class="list-unstyled">
+                                            <li class="mb-2">
+                                                <strong class="text-info">IRR:</strong> Tingkat pengembalian investasi dalam bentuk persentase
+                                            </li>
+                                            <li class="mb-2">
+                                                <strong class="text-success">Indikator Profitabilitas:</strong> Menunjukkan seberapa menguntungkan investasi
+                                            </li>
+                                            <li class="mb-2">
+                                                <strong class="text-warning">Perbandingan:</strong> Bisa dibandingkan dengan bunga bank atau investasi lain
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6 mb-4">
+                                    <div class="h-100 p-3 border rounded bg-white">
+                                        <h6 class="fw-bold text-primary mb-3">
+                                            <i class="bi bi-calculator me-2"></i>
+                                            Cara Membaca IRR
+                                        </h6>
+                                        <ul class="list-unstyled">
+                                            <li class="mb-2">
+                                                <strong class="text-success">IRR > 15%:</strong> Sangat menguntungkan, layak investasi
+                                            </li>
+                                            <li class="mb-2">
+                                                <strong class="text-warning">IRR 10-15%:</strong> Menguntungkan, cukup layak
+                                            </li>
+                                            <li class="mb-2">
+                                                <strong class="text-danger">IRR < 10%:</strong> Kurang menguntungkan, perlu evaluasi
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row mt-3">
+                                <div class="col-12">
+                                    <div class="p-3 border rounded bg-white">
+                                        <h6 class="fw-bold text-primary mb-3">
+                                            <i class="bi bi-lightbulb me-2"></i>
+                                            Komponen Analisis Investasi
+                                        </h6>
+                                        <div class="row">
+                                            <div class="col-md-4 mb-3">
+                                                <div class="text-center p-3 border rounded h-100">
+                                                    <i class="bi bi-cash-stack text-success display-6"></i>
+                                                    <h6 class="mt-2 text-success">NPV (Net Present Value)</h6>
+                                                    <p class="mb-2"><strong>Artinya:</strong></p>
+                                                    <p class="mb-2">Nilai bersih investasi saat ini</p>
+                                                    <small class="text-muted">Positif = layak, Negatif = tidak layak</small>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-4 mb-3">
+                                                <div class="text-center p-3 border rounded h-100">
+                                                    <i class="bi bi-percent text-info display-6"></i>
+                                                    <h6 class="mt-2 text-info">IRR</h6>
+                                                    <p class="mb-2"><strong>Artinya:</strong></p>
+                                                    <p class="mb-2">Tingkat pengembalian investasi</p>
+                                                    <small class="text-muted">Semakin tinggi semakin baik</small>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-4 mb-3">
+                                                <div class="text-center p-3 border rounded h-100">
+                                                    <i class="bi bi-graph-up text-warning display-6"></i>
+                                                    <h6 class="mt-2 text-warning">Profitability Index</h6>
+                                                    <p class="mb-2"><strong>Artinya:</strong></p>
+                                                    <p class="mb-2">Rasio manfaat terhadap biaya</p>
+                                                    <small class="text-muted">> 1 = layak, < 1 = tidak layak</small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row mt-4">
+                                <div class="col-12">
+                                    <div class="alert alert-info border-0">
+                                        <div class="d-flex align-items-start">
+                                            <i class="bi bi-info-circle me-3 mt-1"></i>
+                                            <div>
+                                                <h6 class="alert-heading fw-bold">Kapan Harus Menggunakan IRR?</h6>
+                                                <ul class="mb-0">
+                                                    <li><strong>Memulai Bisnis Baru:</strong> Untuk mengetahui kelayakan investasi</li>
+                                                    <li><strong>Ekspansi Bisnis:</strong> Untuk menambah cabang atau produk baru</li>
+                                                    <li><strong>Pembelian Mesin:</strong> Untuk investasi peralatan produksi</li>
+                                                    <li><strong>Perbandingan Proyek:</strong> Untuk memilih investasi terbaik</li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
 </main>

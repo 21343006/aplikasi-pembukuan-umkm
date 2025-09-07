@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Database\Eloquent\Builder;
 
 class Income extends Model
 {
@@ -43,6 +44,16 @@ class Income extends Model
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
+    }
+
+    // Global scope untuk auto-filter berdasarkan user yang login
+    protected static function booted(): void
+    {
+        static::addGlobalScope('user', function (Builder $query) {
+            if (Auth::check()) {
+                $query->where('user_id', Auth::id());
+            }
+        });
     }
 
     /**
@@ -183,6 +194,13 @@ class Income extends Model
     protected static function boot()
     {
         parent::boot();
+
+        static::creating(function ($income) {
+            // Auto set user_id saat creating jika belum ada
+            if (!$income->user_id && Auth::check()) {
+                $income->user_id = Auth::id();
+            }
+        });
 
         static::saving(function ($income) {
             // Hitung total pendapatan jika belum diisi

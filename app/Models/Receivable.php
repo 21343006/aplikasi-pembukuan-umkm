@@ -4,6 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
 
 class Receivable extends Model
@@ -22,6 +24,11 @@ class Receivable extends Model
         'notes',
     ];
 
+    protected $attributes = [
+        'paid_amount' => null,
+        'status' => 'unpaid',
+    ];
+
     protected $casts = [
         'due_date' => 'date',
         'paid_date' => 'date',
@@ -34,9 +41,35 @@ class Receivable extends Model
         return $this->belongsTo(User::class);
     }
 
+    // Global scope untuk auto-filter berdasarkan user yang login
+    protected static function booted(): void
+    {
+        static::addGlobalScope('user', function (Builder $query) {
+            if (Auth::check()) {
+                $query->where('user_id', Auth::id());
+            }
+        });
+    }
+
+    // Auto set user_id saat creating dan handle paid_amount
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::creating(function ($receivable) {
+            if (!$receivable->user_id && Auth::check()) {
+                $receivable->user_id = Auth::id();
+            }
+            // Set paid_amount to null instead of 0 for new records
+            if ($receivable->paid_amount === 0) {
+                $receivable->paid_amount = null;
+            }
+        });
+    }
+
     public function getRemainingAmountAttribute()
     {
-        return $this->amount - $this->paid_amount;
+        return $this->amount - ($this->paid_amount ?? 0);
     }
 
     public function getIsOverdueAttribute()
@@ -62,12 +95,12 @@ class Receivable extends Model
         $daysOverdue = $isOverdue ? (int) $now->diffInDays($this->due_date, false) : 0;
         
         // Jika sudah dibayar lunas
-        if ($this->paid_amount >= $this->amount) {
+        if (($this->paid_amount ?? 0) >= $this->amount) {
             return 'Lunas';
         }
         
         // Jika belum dibayar sepeserpun
-        if ($this->paid_amount == 0) {
+        if (!$this->paid_amount || $this->paid_amount == 0) {
             if ($isOverdue) {
                 return "Belum Dibayar (Terlambat {$daysOverdue} hari)";
             }
@@ -94,12 +127,12 @@ class Receivable extends Model
         $isOverdue = $this->due_date < $now;
         
         // Jika sudah dibayar lunas
-        if ($this->paid_amount >= $this->amount) {
+        if (($this->paid_amount ?? 0) >= $this->amount) {
             return 'bg-success';
         }
         
         // Jika belum dibayar sepeserpun
-        if ($this->paid_amount == 0) {
+        if (!$this->paid_amount || $this->paid_amount == 0) {
             if ($isOverdue) {
                 return 'bg-danger';
             }
@@ -127,12 +160,12 @@ class Receivable extends Model
         $daysOverdue = $isOverdue ? (int) $now->diffInDays($this->due_date, false) : 0;
         
         // Jika sudah dibayar lunas
-        if ($this->paid_amount >= $this->amount) {
+        if (($this->paid_amount ?? 0) >= $this->amount) {
             return 'Lunas';
         }
         
         // Jika belum dibayar sepeserpun
-        if ($this->paid_amount == 0) {
+        if (!$this->paid_amount || $this->paid_amount == 0) {
             if ($isOverdue) {
                 return "Belum Dibayar (Terlambat {$daysOverdue} hari)";
             }

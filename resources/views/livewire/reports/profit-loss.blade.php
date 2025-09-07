@@ -94,6 +94,7 @@
                                     <i class="bi bi-download"></i> Export CSV
                                 </button>
                             @endif
+
                         </div>
                     </div>
 
@@ -253,7 +254,7 @@
                                         <small class="text-muted">Profit Margin</small>
                                         <div class="progress mt-2" style="height: 3px;">
                                             <div class="progress-bar bg-{{ $marginProfit >= 15 ? 'success' : ($marginProfit >= 8 ? 'warning' : 'danger') }}"
-                                                style="width: {{ min($marginProfit, 30) * (100 / 30) }}%"></div>
+                                                data-progress="{{ min($marginProfit, 30) * (100 / 30) }}"></div>
                                         </div>
                                     </div>
                                 </div>
@@ -269,7 +270,7 @@
                                         <small class="text-muted">Expense Ratio</small>
                                         <div class="progress mt-2" style="height: 3px;">
                                             <div class="progress-bar bg-{{ $expenseRatio <= 70 ? 'success' : ($expenseRatio <= 85 ? 'warning' : 'danger') }}"
-                                                style="width: {{ min($expenseRatio, 100) }}%"></div>
+                                                data-progress="{{ min($expenseRatio, 100) }}"></div>
                                         </div>
                                     </div>
                                 </div>
@@ -285,7 +286,7 @@
                                             <small class="text-muted">Growth Rate</small>
                                             <div class="progress mt-2" style="height: 3px;">
                                                 <div class="progress-bar bg-{{ $growthRate >= 10 ? 'success' : ($growthRate >= 0 ? 'info' : 'danger') }}"
-                                                    style="width: {{ min(abs($growthRate), 50) * 2 }}%"></div>
+                                                    data-progress="{{ min(abs($growthRate), 50) * 2 }}"></div>
                                             </div>
                                         </div>
                                     </div>
@@ -675,9 +676,12 @@
 
     {{-- Final, 100% Working Chart Script --}}
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.js"></script>
+    <div id="chart-data" 
+         data-chartdata="{{ json_encode($chartData) }}"
+         data-hasvaliddata="{{ json_encode($hasValidChartData) }}"
+         style="display: none;"></div>
     <script>
         document.addEventListener('livewire:init', () => {
-            console.log('🚀 Chart System Initialized');
 
             const ChartManager = {
                 barChart: null,
@@ -695,7 +699,6 @@
                 },
 
                 update(chartData, hasValidData) {
-                    console.log('📊 Receiving new chart data', { hasValidData });
 
                     this.destroy();
 
@@ -822,12 +825,143 @@
             };
 
             // Initialize chart with the data from the initial page load
-            ChartManager.init(@json($chartData), @json($hasValidChartData));
+            const chartDataElement = document.getElementById('chart-data');
+            const chartData = chartDataElement ? JSON.parse(chartDataElement.dataset.chartdata || '{}') : {};
+            const hasValidChartData = chartDataElement ? JSON.parse(chartDataElement.dataset.hasvaliddata || 'false') : false;
+            ChartManager.init(chartData, hasValidChartData);
 
             // Listen for updates from the Livewire component
             Livewire.on('update-chart', ({chartData, hasValidChartData}) => {
                 ChartManager.update(chartData, hasValidChartData);
             });
+
+            // Set progress bar widths using data attributes
+            const progressBars = document.querySelectorAll('.progress-bar[data-progress]');
+            progressBars.forEach(function(bar) {
+                const progress = parseFloat(bar.getAttribute('data-progress')) || 0;
+                bar.style.width = Math.min(100, Math.max(0, progress)) + '%';
+            });
         });
     </script>
+
+
+    {{-- Penjelasan untuk Pelaku UMKM Awam --}}
+    <section class="bg-light py-5 mt-5">
+        <div class="container">
+            <div class="row justify-content-center">
+                <div class="col-lg-10">
+                    <div class="card border-0 shadow-sm">
+                        <div class="card-body p-4">
+                            <div class="text-center mb-4">
+                                <i class="bi bi-graph-up text-primary display-4"></i>
+                                <h4 class="mt-3 text-primary fw-bold">Panduan Laporan Laba Rugi</h4>
+                                <p class="text-muted">Penjelasan sederhana untuk memahami untung rugi bisnis UMKM</p>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6 mb-4">
+                                    <div class="h-100 p-3 border rounded bg-white">
+                                        <h6 class="fw-bold text-primary mb-3">
+                                            <i class="bi bi-plus-circle me-2"></i>
+                                            Komponen Pendapatan
+                                        </h6>
+                                        <ul class="list-unstyled">
+                                            <li class="mb-2">
+                                                <strong class="text-success">Pendapatan:</strong> Total uang dari penjualan produk/jasa
+                                            </li>
+                                            <li class="mb-2">
+                                                <strong class="text-success">Modal Awal:</strong> Uang yang disetorkan sebagai modal
+                                            </li>
+                                            <li class="mb-2">
+                                                <strong class="text-success">Total Pemasukan:</strong> Pendapatan + Modal Awal
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6 mb-4">
+                                    <div class="h-100 p-3 border rounded bg-white">
+                                        <h6 class="fw-bold text-primary mb-3">
+                                            <i class="bi bi-dash-circle me-2"></i>
+                                            Komponen Pengeluaran
+                                        </h6>
+                                        <ul class="list-unstyled">
+                                            <li class="mb-2">
+                                                <strong class="text-danger">Biaya Variabel:</strong> Biaya yang berubah sesuai produksi
+                                            </li>
+                                            <li class="mb-2">
+                                                <strong class="text-danger">Biaya Tetap:</strong> Biaya yang selalu sama setiap bulan
+                                            </li>
+                                            <li class="mb-2">
+                                                <strong class="text-danger">Total Pengeluaran:</strong> Semua biaya operasional
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row mt-3">
+                                <div class="col-12">
+                                    <div class="p-3 border rounded bg-white">
+                                        <h6 class="fw-bold text-primary mb-3">
+                                            <i class="bi bi-calculator me-2"></i>
+                                            Cara Menghitung Laba/Rugi
+                                        </h6>
+                                        <div class="row">
+                                            <div class="col-md-4 mb-3">
+                                                <div class="text-center p-3 border rounded h-100">
+                                                    <i class="bi bi-arrow-up-circle text-success display-6"></i>
+                                                    <h6 class="mt-2 text-success">Laba (Untung)</h6>
+                                                    <p class="mb-2"><strong>Rumus:</strong></p>
+                                                    <p class="mb-2">Pendapatan > Pengeluaran</p>
+                                                    <small class="text-muted">Bisnis Anda menghasilkan keuntungan</small>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-4 mb-3">
+                                                <div class="text-center p-3 border rounded h-100">
+                                                    <i class="bi bi-arrow-down-circle text-danger display-6"></i>
+                                                    <h6 class="mt-2 text-danger">Rugi</h6>
+                                                    <p class="mb-2"><strong>Rumus:</strong></p>
+                                                    <p class="mb-2">Pendapatan < Pengeluaran</p>
+                                                    <small class="text-muted">Bisnis Anda mengalami kerugian</small>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-4 mb-3">
+                                                <div class="text-center p-3 border rounded h-100">
+                                                    <i class="bi bi-dash-circle text-warning display-6"></i>
+                                                    <h6 class="mt-2 text-warning">Break Even</h6>
+                                                    <p class="mb-2"><strong>Rumus:</strong></p>
+                                                    <p class="mb-2">Pendapatan = Pengeluaran</p>
+                                                    <small class="text-muted">Tidak untung tidak rugi</small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row mt-4">
+                                <div class="col-12">
+                                    <div class="alert alert-success border-0">
+                                        <div class="d-flex align-items-start">
+                                            <i class="bi bi-lightbulb me-3 mt-1"></i>
+                                            <div>
+                                                <h6 class="alert-heading fw-bold">Tips Meningkatkan Laba!</h6>
+                                                <ul class="mb-0">
+                                                    <li><strong>Naikkan Pendapatan:</strong> Tingkatkan penjualan atau harga jual</li>
+                                                    <li><strong>Turunkan Biaya:</strong> Cari supplier yang lebih murah</li>
+                                                    <li><strong>Efisiensi:</strong> Kurangi biaya yang tidak perlu</li>
+                                                    <li><strong>Monitoring:</strong> Periksa laporan laba rugi setiap bulan</li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
 </div>

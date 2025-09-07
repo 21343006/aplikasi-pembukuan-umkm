@@ -297,13 +297,6 @@
             <i class="bi bi-list toggle-sidebar-btn"></i>
         </div><!-- End Logo -->
 
-        <div class="search-bar">
-            <form class="search-form d-flex align-items-center" method="POST" action="#">
-                <input type="text" name="query" placeholder="Search" title="Enter search keyword">
-                <button type="submit" title="Search"><i class="bi bi-search"></i></button>
-            </form>
-        </div><!-- End Search Bar -->
-
         <nav class="header-nav ms-auto">
             <ul class="d-flex align-items-center">
 
@@ -420,15 +413,15 @@
                     class="nav-content collapse {{ request()->routeIs('modal.page', 'modal.awal', 'fixed.cost') ? 'show' : '' }}"
                     data-bs-parent="#sidebar-nav">
                     <li>
-                        <a wire:navigate href="{{ route('modal.page') }}"
-                            class="{{ request()->routeIs('modal.page') ? 'active' : '' }}">
-                            <i class="bi bi-circle"></i><span>Data Modal</span>
-                        </a>
-                    </li>
-                    <li>
                         <a wire:navigate href="{{ route('modal.awal') }}"
                             class="{{ request()->routeIs('modal.awal') ? 'active' : '' }}">
                             <i class="bi bi-circle"></i><span>Modal Awal</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a wire:navigate href="{{ route('modal.page') }}"
+                            class="{{ request()->routeIs('modal.page') ? 'active' : '' }}">
+                            <i class="bi bi-circle"></i><span>Pengelolaan Modal</span>
                         </a>
                     </li>
                     <li>
@@ -458,7 +451,7 @@
                     <li>
                         <a wire:navigate href="{{ route('laporan.tahunan') }}"
                             class="{{ request()->routeIs('laporan.tahunan') ? 'active' : '' }}">
-                            <i class="bi bi-circle"></i><span>Laporan Keuangan Tahunan</span>
+                            <i class="bi bi-circle"></i><span>Laporan Tahunan</span>
                         </a>
                     </li>
                     <li>
@@ -471,17 +464,17 @@
             </li><!-- End Laporan Nav -->
 
             <li class="nav-item">
-                <a class="nav-link {{ request()->routeIs('bep.form', 'irr.analysis') ? '' : 'collapsed' }}"
+                <a class="nav-link {{ request()->routeIs('bep.calculator', 'irr.analysis') ? '' : 'collapsed' }}"
                     data-bs-target="#analisis-nav" data-bs-toggle="collapse">
                     <i class="bi bi-graph-up"></i><span>Analisis</span><i class="bi bi-chevron-down ms-auto"></i>
                 </a>
                 <ul id="analisis-nav"
-                    class="nav-content collapse {{ request()->routeIs('bep.form', 'irr.analysis') ? 'show' : '' }}"
+                    class="nav-content collapse {{ request()->routeIs('bep.calculator', 'irr.analysis') ? 'show' : '' }}"
                     data-bs-parent="#sidebar-nav">
                     <li>
-                        <a wire:navigate href="{{ route('bep.form') }}"
-                            class="{{ request()->routeIs('bep.form') ? 'active' : '' }}">
-                            <i class="bi bi-circle"></i><span>Break Even Point</span>
+                        <a wire:navigate href="{{ route('bep.calculator') }}"
+                            class="{{ request()->routeIs('bep.calculator') ? 'active' : '' }}">
+                            <i class="bi bi-circle"></i><span>BEP Calculator</span>
                         </a>
                     </li>
                     <li>

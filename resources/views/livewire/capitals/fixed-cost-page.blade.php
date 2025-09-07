@@ -133,7 +133,8 @@
                                                     <i class="bi bi-pencil"></i>
                                                 </button>
                                                 <button class="btn btn-sm btn-outline-danger"
-                                                        onclick="confirmDelete({{ $fixedCost['id'] }})"
+                                                        onclick="confirmDelete(this.dataset.id)"
+                                                        data-id="{{ $fixedCost['id'] }}"
                                                         title="Hapus (akan menghapus untuk bulan ini dan berikutnya)">
                                                     <i class="bi bi-trash"></i>
                                                 </button>
@@ -156,21 +157,7 @@
                         </table>
                     </div>
 
-                    {{-- Info Tambahan --}}
-                    <div class="alert alert-info mt-3">
-                        <div class="d-flex align-items-start">
-                            <i class="bi bi-lightbulb fs-4 me-3"></i>
-                            <div>
-                                <h6 class="mb-2"><strong>Tips Penggunaan Modal Tetap:</strong></h6>
-                                <ul class="mb-0">
-                                    <li>Modal tetap adalah biaya yang dikeluarkan secara rutin setiap bulan (sewa, gaji, listrik, dll.)</li>
-                                    <li>Data yang Anda tambahkan akan otomatis berlaku untuk bulan ini dan bulan-bulan berikutnya</li>
-                                    <li>Gunakan tombol "Salin Bulan Lalu" untuk menyalin data dari bulan sebelumnya</li>
-                                    <li>Edit atau hapus data akan mempengaruhi bulan ini dan bulan-bulan berikutnya</li>
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
+                    
                 @else
                     <div class="alert alert-primary mt-4">
                         <div class="text-center">
@@ -390,7 +377,7 @@
     <script>
         function confirmDelete(id) {
             if (confirm('Apakah Anda yakin ingin menghapus data ini?\n\nData akan dihapus untuk bulan ini dan bulan-bulan berikutnya dalam tahun yang sama.')) {
-                @this.call('confirmDelete', id);
+                window.Livewire.find('{{ $this->id }}').call('confirmDelete', id);
             }
         }
 
@@ -415,14 +402,14 @@
         // Optional: Add keyboard shortcuts
         document.addEventListener('keydown', function(e) {
             // Ctrl/Cmd + N for new modal tetap
-            if ((e.ctrlKey || e.metaKey) && e.key === 'n' && !@this.showModal) {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
                 e.preventDefault();
-                @this.call('openModal');
+                window.Livewire.find('{{ $this->id }}').call('openModal');
             }
 
             // Escape to close modal
-            if (e.key === 'Escape' && @this.showModal) {
-                @this.call('closeModal');
+            if (e.key === 'Escape') {
+                window.Livewire.find('{{ $this->id }}').call('closeModal');
             }
         });
     </script>
