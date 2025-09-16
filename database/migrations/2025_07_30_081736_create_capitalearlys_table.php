@@ -13,7 +13,9 @@ return new class extends Migration
     {
         Schema::create('capitalearlys', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('user_id')->constrained()->onDelete('cascade');
             $table->decimal('modal_awal', 15, 2);
+            $table->date('tanggal_input')->nullable();
             $table->timestamps();
         });
     }

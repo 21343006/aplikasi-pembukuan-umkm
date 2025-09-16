@@ -13,6 +13,7 @@ return new class extends Migration
     {
         Schema::create('fixed_costs', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('user_id')->constrained()->onDelete('cascade');
             $table->date('tanggal');
             $table->string('keperluan');
             $table->decimal('nominal', 15, 2);

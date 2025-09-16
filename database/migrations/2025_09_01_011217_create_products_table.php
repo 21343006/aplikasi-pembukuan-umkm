@@ -17,6 +17,9 @@ return new class extends Migration
             $table->string('name');
             $table->integer('quantity')->default(0);
             $table->integer('low_stock_threshold')->default(10);
+            $table->decimal('cost_per_unit', 15, 2)->default(0);
+            $table->decimal('selling_price', 15, 2)->default(0);
+            $table->string('unit', 50)->default('unit');
             $table->timestamps();
         });
     }

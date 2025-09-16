@@ -13,6 +13,7 @@ class FixedCostPage extends Component
 {
     #[Title('Modal Tetap')]
     
+    public $id;
     public $keperluan, $nominal;
     public array $fixedCosts = [];
     public $jumlahNominal = 0;
@@ -52,6 +53,7 @@ class FixedCostPage extends Component
 
     public function mount()
     {
+        $this->id = uniqid();
         $this->filterMonth = now()->month;
         $this->filterYear = now()->year;
         $this->fixedCosts = [];

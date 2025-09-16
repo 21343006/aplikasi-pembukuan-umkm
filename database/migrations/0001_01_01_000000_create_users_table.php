@@ -16,7 +16,9 @@ return new class extends Migration
             $table->string('name');
             $table->string('email')->unique();
             $table->string('password');
+            $table->string('profile_photo_path', 2048)->nullable();
             $table->string('business_name')->nullable();
+            $table->string('nib')->nullable();
             $table->string('phone', 20)->nullable();
             $table->text('address')->nullable();
             $table->string('business_type')->nullable();
